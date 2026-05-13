@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rayien Analytics - v11.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { jsPDF } from "https://cdn.skypack.dev/jspdf@2.5.1";
+    window.jsPDF = jsPDF;
+  </script>
+</head>
+<body class="bg-gray-100 p-4">
+  <!-- LOGIN -->
+  <div id="loginDiv" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow mt-10">
+    <h1 class="text-2xl font-bold mb-4 text-center">Rayien Analytics</h1>
+    <input id="email" type="email" placeholder="Email" class="w-full p-3 border rounded mb-3">
+    <input id="password" type="password" placeholder="Password" class="w-full p-3 border rounded mb-3">
+    <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded font-bold">Login</button>
+    <p id="error" class="text-red-500 mt-3 text-center"></p>
+  </div>
+
+  <!-- SET PASSWORD - FIRST TIME TEACHER LOGIN -->
+  <div id="setPasswordDiv" style="display:none;" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow mt-10">
+    <h1 class="text-2xl font-bold mb-4 text-center">Set Your Password</h1>
+    <p class="text-sm text-gray-600 mb-4 text-center">Welcome <span id="firstTimeEmail"></span>. Create a secure password.</p>
+    <input id="newPassword" type="password" placeholder="New Password" class="w-full p-3 border rounded mb-3">
+    <input id="confirmPassword" type="password" placeholder="Confirm Password" class="w-full p-3 border rounded mb-3">
+    <button onclick="setFirstPassword()" class="w-full bg-green-600 text-white p-3 rounded font-bold">Set Password & Login</button>
+    <p id="setPassError" class="text-red-500 mt-3 text-center"></p>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashDiv" style="display:none;" class="max-w-7xl mx-auto">
+    <div class="bg-white p-4 rounded-lg shadow mb-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold">Rayien Analytics</h1>
+        <p id="line2" class="text-lg text-blue-600 font-semibold"></p>
+        <p id="line3" class="text-base text-gray-700"></p>
+      </div>
+      <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded">Logout</button>
+    </div>
+    <!-- SUPER ADMIN PANEL -->
+    <div id="superAdminPanel" style="display:none;">
+      <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+          <h3 class="font-bold text-gray-600">Schools</h3>
+          <p id="schoolCount" class="text-3xl font-bold">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+          <h3 class="font-bold text-gray-600">Students</h3>
+          <p id="studentCount" class="text-3xl font-bold">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+          <h3 class="font-bold text-gray-600">Teachers</h3>
+          <p id="teacherCount" class="text-3xl font-bold">0</p>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow mb-4">
+        <h3 class="text-xl font-bold mb-4">Platform Management</h3>
+        <div class="mb-6 p-4 border rounded">
+          <h4 class="font-bold mb-2">+ Add New School</h4>
+          <input id="schoolName" placeholder="School Name" class="p-2 border rounded mr-2 mb-2 w-full md:w-auto">
+          <input id="schoolEmail" placeholder="School Email" class="p-2 border rounded mr-2 mb-2 w-full md:w-auto">
+          <input id="schoolPrincipal" placeholder="Principal Name" class="p-2 border rounded mr-2 mb-2 w-full md:w-auto">
+          <button onclick="addSchool()" class="bg-green-600 text-white px-4 py-2 rounded">Add School</button>
+        </div>
+        <h4 class="font-bold mb-2">All Schools</h4>
+        <div id="schoolsList" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN/PRINCIPAL PANEL -->
+    <div id="adminPanel" style="display:none;">
+      <div class="bg-white p-6 rounded-lg shadow mb-4">
+        <h3 class="text-lg font-bold mb-3">School Management</h3>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="showAddTeacher()" class="bg-blue-600 text-white px-4 py-2 rounded">+ Add Teacher</button>
+          <button onclick="showAddClass()" class="bg-blue-600 text-white px-4 py-2 rounded">+ Add Class</button>
+          <button onclick="showAddStream()" class="bg-blue-600 text-white px-4 py-2 rounded">+ Add Stream</button>
+          <button onclick="showAddLearningArea()" class="bg-blue-600 text-white px-4 py-2 rounded">+ Add Learning Area</button>
+          <button onclick="showAddStudent()" class="bg-purple-600 text-white px-4 py-2 rounded">+ Add Learner</button>
+        </div>
+        <h3 class="text-lg font-bold mb-3">Assign Duties & Reports</h3>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="showAssignClassTeacher()" class="bg-purple-600 text-white px-4 py-2 rounded">Assign Class Teacher</button>
+          <button onclick="showAssignSubjectTeacher()" class="bg-purple-600 text-white px-4 py-2 rounded">Assign Subject Teacher</button>
+          <button onclick="showAssignRank()" class="bg-purple-600 text-white px-4 py-2 rounded">Assign Rank/Duty</button>
+          <button onclick="showGenerateReportsAdmin()" class="bg-orange-600 text-white px-4 py-2 rounded">Generate Report Cards</button>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="text-lg font-bold mb-3">School Data</h3>
+        <div id="adminData" class="space-y-4">Loading...</div>
+      </div>
+    </div>
+
+    <!-- TEACHER PANEL -->
+    <div id="teacherPanel" style="display:none;">
+      <div class="bg-white p-6 rounded-lg shadow mb-4">
+        <h3 class="text-lg font-bold mb-3">Teacher Actions</h3>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="showUploadMarks()" class="bg-green-600 text-white px-4 py-2 rounded">+ Upload Marks</button>
+          <button onclick="viewMyClasses()" class="bg-blue-600 text-white px-4 py-2 rounded">My Classes</button>
+          <button onclick="showGenerateReports()" class="bg-purple-600 text-white px-4 py-2 rounded">Generate Reports</button>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="text-lg font-bold mb-3">My Dashboard</h3>
+        <div id="teacherData" class="space-y-4">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNIVERSAL MODAL -->
+  <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-screen overflow-y-auto">
+      <h3 id="modalTitle" class="text-xl font-bold mb-4"></h3>
+      <div id="modalBody"></div>
+      <p id="modalError" class="text-red-500 text-sm mt-2 hidden"></p>
+      <div class="flex justify-end gap-2 mt-4">
+        <button onclick="closeModal()" class="px-4 py-2 border rounded">Cancel</button>
+        <button id="modalSaveBtn" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAuiX3gWu0GCw-9m4P-Cc3ktpnPK8AEfXw",
+      authDomain: "rayien-analytics.firebaseapp.com",
+      projectId: "rayien-analytics",
+      storageBucket: "rayien-analytics.firebasestorage.app",
+      messagingSenderId: "1021167079161",
+      appId: "1:1021167079161:web:c47b3dce49b0f542045c28"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // FIX: Set persistence to avoid mobile auth/network-request-failed
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.error("Persistence error:", err);
+    });
+
+    let currentSchoolId = null;
+    let currentUserRole = null;
+    let pendingTeacherEmail = null;
+    let cachedTeachers = [];
+    let cachedClasses = [];
+    let cachedStreams = [];
+    let cachedLearningAreas = [];
+    let cachedStudents = [];
+    let editMode = false;
+    let editId = null;
+    let editCollection = null;
+    window.markAssignments = [];
+    window.login = async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const q = query(collection(db, "pending_teachers"), where("email", "==", email), where("tempPassword", "==", password));
+        const snap = await getDocs(q);
+        if (!snap.empty &&!snap.docs[0].data().activated) {
+          pendingTeacherEmail = email;
+          document.getElementById('loginDiv').style.display = 'none';
+          document.getElementById('setPasswordDiv').style.display = 'block';
+          document.getElementById('firstTimeEmail').innerText = email;
+          return;
+        }
+        await signInWithEmailAndPassword(auth, email, password);
+        document.getElementById('error').innerText = '';
+      } catch (e) {
+        document.getElementById('error').innerText = e.message;
+      }
+    };
+
+    window.setFirstPassword = async () => {
+      const newPass = document.getElementById('newPassword').value;
+      const confirmPass = document.getElementById('confirmPassword').value;
+      const errorEl = document.getElementById('setPassError');
+      if (newPass.length < 6) { errorEl.textContent = 'Password must be 6+ characters'; return; }
+      if (newPass!== confirmPass) { errorEl.textContent = 'Passwords do not match'; return; }
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, pendingTeacherEmail, newPass);
+        const q = query(collection(db, "pending_teachers"), where("email", "==", pendingTeacherEmail));
+        const snap = await getDocs(q);
+        const teacherData = snap.docs[0].data();
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          email: pendingTeacherEmail,
+          role: "teacher",
+          schoolId: teacherData.schoolId,
+          name: teacherData.name,
+          createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "pending_teachers", snap.docs[0].id), { activated: true });
+        document.getElementById('setPasswordDiv').style.display = 'none';
+      } catch (e) { errorEl.textContent = e.message; }
+    };
+
+    window.logout = () => signOut(auth);
+
+    window.addSchool = async () => {
+      const name = document.getElementById('schoolName').value;
+      const email = document.getElementById('schoolEmail').value;
+      const principal = document.getElementById('schoolPrincipal').value;
+      if(!name) return alert('School name required');
+      await addDoc(collection(db, "schools"), { name, email, principal, createdAt: serverTimestamp() });
+      document.getElementById('schoolName').value = '';
+      document.getElementById('schoolEmail').value = '';
+      document.getElementById('schoolPrincipal').value = '';
+      loadSchools();
+    };
+
+    async function loadSchools() {
+      const querySnapshot = await getDocs(collection(db, "schools"));
+      document.getElementById('schoolCount').innerText = querySnapshot.size;
+      let html = '';
+      querySnapshot.forEach((d) => {
+        const data = d.data();
+        html += `<div class="p-3 border rounded flex justify-between items-center">
+          <div><b>${data.name}</b><br>Principal: ${data.principal}<br>Email: ${data.email}</div>
+          <button onclick="deleteItem('schools','${d.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
+        </div>`;
+      });
+      document.getElementById('schoolsList').innerHTML = html || '<p class="text-gray-500">No schools yet</p>';
+    }
+
+    function openModal(title, bodyHTML, saveFn) {
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalBody').innerHTML = bodyHTML;
+      document.getElementById('modalSaveBtn').onclick = saveFn;
+      document.getElementById('modalSaveBtn').innerText = editMode? 'Update' : 'Save';
+      document.getElementById('modalError').classList.add('hidden');
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    window.closeModal = () => {
+      document.getElementById('modal').classList.add('hidden');
+      editMode = false; editId = null; editCollection = null;
+    };
+
+    function checkSchoolId() {
+      if (!currentSchoolId) {
+        alert('Error: Your account is not assigned to a school.');
+        return false;
+      }
+      return true;
+    }
+
+    window.deleteItem = async (col, id, subCol = null) => {
+      if (!confirm('Are you sure? This cannot be undone.')) return;
+      try {
+        if (subCol) {
+          await deleteDoc(doc(db, "schools", currentSchoolId, col, id));
+        } else {
+          await deleteDoc(doc(db, col, id));
+        }
+        if (col === 'schools') loadSchools();
+        else loadAdminData();
+      } catch (e) { alert('Error: ' + e.message); }
+    };
+
+    function getOverallGrade(mean) {
+      const m = Number(mean);
+      if (m >= 80) return 'E.E';
+      if (m >= 65) return 'M.E';
+      if (m >= 50) return 'A.E';
+      return 'B.E';
+    }
+
+    function getGradeFromScore(score) {
+      if (score >= 80) return 'E.E';
+      if (score >= 65) return 'M.E';
+      if (score >= 50) return 'A.E';
+      return 'B.E';
+    }
+
+    // EDIT FUNCTIONS
+    window.editTeacher = async (id) => {
+      if (!checkSchoolId()) return;
+      const t = cachedTeachers.find(t=>t.id==id);
+      editMode = true; editId = id; editCollection = 'teachers';
+      openModal('Edit Teacher', `
+        <input id="teacherName" placeholder="Full Name" class="w-full p-2 border rounded mb-2" value="${t.name||''}">
+        <input id="teacherEmail" placeholder="Email" class="w-full p-2 border rounded mb-2" value="${t.email||''}" disabled>
+        <input id="teacherPhone" placeholder="Phone" class="w-full p-2 border rounded mb-2" value="${t.phone||''}">
+        <input id="teacherTSC" placeholder="TSC Number" class="w-full p-2 border rounded mb-2" value="${t.tsc||''}">
+        <p class="text-xs text-gray-600">Email cannot be changed</p>
+      `, saveTeacher);
+    };
+
+    window.editStudent = async (id, data) => {
+      if (!checkSchoolId()) return;
+      editMode = true; editId = id; editCollection = 'students';
+      let streamOptions = cachedStreams.map(s => `<option value="${s.id}" ${s.id==data.streamId?'selected':''}>${cachedClasses.find(c=>c.id==s.classId)?.name||'Unknown'} ${s.name}</option>`).join('');
+      openModal('Edit Learner', `
+        <input id="studentName" placeholder="Full Name" class="w-full p-2 border rounded mb-2" value="${data.name||''}">
+        <input id="studentAdmission" placeholder="Admission Number" class="w-full p-2 border rounded mb-2" value="${data.admission||''}">
+        <input id="studentAssessment" placeholder="Assessment Number" class="w-full p-2 border rounded mb-2" value="${data.assessment||''}">
+        <input id="studentUPI" placeholder="UPI Number" class="w-full p-2 border rounded mb-2" value="${data.upi||''}">
+        <select id="studentStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <input id="studentParent" placeholder="Parent Name" class="w-full p-2 border rounded mb-2" value="${data.parent||''}">
+        <input id="studentParentPhone" placeholder="Parent Phone" class="w-full p-2 border rounded" value="${data.parentPhone||''}">
+      `, saveStudent);
+    };
+
+    // ADD FUNCTIONS
+    window.showAddTeacher = () => {
+      if (!checkSchoolId()) return;
+      const tempPass = 'temp' + Math.floor(Math.random()*10000);
+      editMode = false;
+      openModal('Add Teacher', `
+        <input id="teacherName" placeholder="Full Name" class="w-full p-2 border rounded mb-2">
+        <input id="teacherEmail" placeholder="Email - will be login" class="w-full p-2 border rounded mb-2">
+        <input id="teacherPhone" placeholder="Phone" class="w-full p-2 border rounded mb-2">
+        <input id="teacherTSC" placeholder="TSC Number" class="w-full p-2 border rounded mb-2">
+        <input id="teacherTempPass" placeholder="Temporary Password" class="w-full p-2 border rounded" value="${tempPass}">
+        <p class="text-xs text-gray-600 mt-2">Give teacher: Email + Temp Password. They'll set real password on first login.</p>
+      `, saveTeacher);
+    };
+
+    window.showAddClass = () => {
+      if (!checkSchoolId()) return;
+      editMode = false;
+      openModal('Add Class/Grade', `
+        <input id="className" placeholder="Class Name e.g. Grade 5" class="w-full p-2 border rounded mb-2">
+        <input id="classGrade" placeholder="Grade Level e.g. 5" class="w-full p-2 border rounded">
+        <p class="text-xs text-gray-600 mt-2">Class = Grade level. Streams go under classes.</p>
+      `, saveClass);
+    };
+
+    window.showAddStream = () => {
+      if (!checkSchoolId()) return;
+      editMode = false;
+      let classOptions = cachedClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('Add Stream', `
+        <select id="streamClass" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Class/Grade</option>
+          ${classOptions}
+        </select>
+        <input id="streamName" placeholder="Stream Name e.g. East, West, North" class="w-full p-2 border rounded mb-2">
+        <p class="text-xs text-gray-600 mt-2">Stream = subdivision of a class. E.g. Grade 5 East</p>
+      `, saveStream);
+    };
+
+    window.showAddLearningArea = () => {
+      if (!checkSchoolId()) return;
+      editMode = false;
+      openModal('Add Learning Area', `
+        <input id="laName" placeholder="Learning Area e.g. Mathematics" class="w-full p-2 border rounded mb-2">
+        <input id="laCode" placeholder="Code e.g. MATH" class="w-full p-2 border rounded">
+      `, saveLearningArea);
+    };
+
+    window.showAddStudent = () => {
+      if (!checkSchoolId()) return;
+      editMode = false;
+      let streamOptions = cachedStreams.map(s => `<option value="${s.id}">${cachedClasses.find(c=>c.id==s.classId)?.name||'Unknown'} ${s.name}</option>`).join('');
+      openModal('Add Learner', `
+        <input id="studentName" placeholder="Full Name" class="w-full p-2 border rounded mb-2">
+        <input id="studentAdmission" placeholder="Admission Number" class="w-full p-2 border rounded mb-2">
+        <input id="studentAssessment" placeholder="Assessment Number" class="w-full p-2 border rounded mb-2">
+        <input id="studentUPI" placeholder="UPI Number" class="w-full p-2 border rounded mb-2">
+        <select id="studentStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <input id="studentParent" placeholder="Parent Name" class="w-full p-2 border rounded mb-2">
+        <input id="studentParentPhone" placeholder="Parent Phone" class="w-full p-2 border rounded">
+      `, saveStudent);
+    };
+
+    // ASSIGN FUNCTIONS
+    window.showAssignClassTeacher = () => {
+      if (!checkSchoolId()) return;
+      let teacherOptions = cachedTeachers.map(t => `<option value="${t.id}">${t.name} - ${t.email}</option>`).join('');
+      let streamOptions = cachedStreams.map(s => `<option value="${s.id}">${cachedClasses.find(c=>c.id==s.classId)?.name||'Unknown'} ${s.name}</option>`).join('');
+      openModal('Assign Class Teacher', `
+        <select id="assignTeacher" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Teacher</option>
+          ${teacherOptions}
+        </select>
+        <select id="assignStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <p class="text-xs text-gray-600">Reassigning will replace previous class teacher</p>
+      `, saveAssignClassTeacher);
+    };
+
+    window.showAssignSubjectTeacher = () => {
+      if (!checkSchoolId()) return;
+      let teacherOptions = cachedTeachers.map(t => `<option value="${t.id}">${t.name} - ${t.email}</option>`).join('');
+      let streamOptions = cachedStreams.map(s => `<option value="${s.id}">${cachedClasses.find(c=>c.id==s.classId)?.name||'Unknown'} ${s.name}</option>`).join('');
+      let laOptions = cachedLearningAreas.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+      openModal('Assign Subject Teacher', `
+        <select id="assignSubjectTeacher" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Teacher</option>
+          ${teacherOptions}
+        </select>
+        <select id="assignSubjectStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <select id="assignLearningArea" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Learning Area</option>
+          ${laOptions}
+        </select>
+      `, saveAssignSubjectTeacher);
+    };
+
+    window.showAssignRank = () => {
+      if (!checkSchoolId()) return;
+      let teacherOptions = cachedTeachers.map(t => `<option value="${t.id}">${t.name} - ${t.email}</option>`).join('');
+      openModal('Assign Rank/Duty', `
+        <select id="rankTeacher" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Teacher</option>
+          ${teacherOptions}
+        </select>
+        <select id="rankValue" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Rank/Duty</option>
+          <option value="Principal">Principal</option>
+          <option value="Deputy Principal">Deputy Principal</option>
+          <option value="Senior Teacher">Senior Teacher</option>
+          <option value="HOD">Head of Department</option>
+          <option value="Class Teacher">Class Teacher</option>
+          <option value="Subject Teacher">Subject Teacher</option>
+          <option value="Games Teacher">Games Teacher</option>
+          <option value="Boarding Master">Boarding Master/Mistress</option>
+        </select>
+        <p class="text-xs text-gray-600">Reassigning will replace previous rank</p>
+      `, saveAssignRank);
+    };
+
+    // SAVE FUNCTIONS
+    async function saveTeacher() {
+      const name = document.getElementById('teacherName').value;
+      const email = document.getElementById('teacherEmail').value;
+      const phone = document.getElementById('teacherPhone').value;
+      const tsc = document.getElementById('teacherTSC').value;
+      const tempPass = document.getElementById('teacherTempPass')?.value;
+      const errorEl = document.getElementById('modalError');
+      if(!name ||!email) { errorEl.textContent = 'Name and Email required'; errorEl.classList.remove('hidden'); return; }
+      try {
+        if (editMode) {
+          await updateDoc(doc(db, "schools", currentSchoolId, "teachers", editId), { name, phone, tsc });
+        } else {
+          await addDoc(collection(db, "schools", currentSchoolId, "teachers"), { name, email, phone, tsc, createdAt: serverTimestamp() });
+          await addDoc(collection(db, "pending_teachers"), { name, email, schoolId: currentSchoolId, tempPassword: tempPass, activated: false, createdAt: serverTimestamp() });
+          alert(`Teacher added.\nLogin: ${email}\nTemp Password: ${tempPass}\n\nGive these to teacher.`);
+        }
+        closeModal(); loadAdminData();
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveClass() {
+      const name = document.getElementById('className').value;
+      const grade = document.getElementById('classGrade').value;
+      const errorEl = document.getElementById('modalError');
+      if(!name) { errorEl.textContent = 'Class name required'; errorEl.classList.remove('hidden'); return; }
+      try {
+        await addDoc(collection(db, "schools", currentSchoolId, "classes"), { name, grade, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveStream() {
+      const classId = document.getElementById('streamClass').value;
+      const name = document.getElementById('streamName').value;
+      const errorEl = document.getElementById('modalError');
+      if(!classId ||!name) { errorEl.textContent = 'Class and Stream name required'; errorEl.classList.remove('hidden'); return; }
+      try {
+        await addDoc(collection(db, "schools", currentSchoolId, "streams"), { classId, name, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveLearningArea() {
+      const name = document.getElementById('laName').value;
+      const code = document.getElementById('laCode').value;
+      const errorEl = document.getElementById('modalError');
+      if(!name) { errorEl.textContent = 'Learning Area name required'; errorEl.classList.remove('hidden'); return; }
+      try {
+        await addDoc(collection(db, "schools", currentSchoolId, "learningAreas"), { name, code, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveStudent() {
+      const name = document.getElementById('studentName').value;
+      const admission = document.getElementById('studentAdmission').value;
+      const assessment = document.getElementById('studentAssessment').value;
+      const upi = document.getElementById('studentUPI').value;
+      const streamId = document.getElementById('studentStream').value;
+      const parent = document.getElementById('studentParent').value;
+      const parentPhone = document.getElementById('studentParentPhone').value;
+      const errorEl = document.getElementById('modalError');
+      if(!name ||!admission) { errorEl.textContent = 'Name and Admission Number required'; errorEl.classList.remove('hidden'); return; }
+      try {
+        if (editMode) {
+          await updateDoc(doc(db, "schools", currentSchoolId, "students", editId), { name, admission, assessment, upi, streamId, parent, parentPhone });
+        } else {
+          await addDoc(collection(db, "schools", currentSchoolId, "students"), { name, admission, assessment, upi, streamId, parent, parentPhone, createdAt: serverTimestamp() });
+        }
+        closeModal(); loadAdminData();
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveAssignClassTeacher() {
+      const teacherId = document.getElementById('assignTeacher').value;
+      const streamId = document.getElementById('assignStream').value;
+      const errorEl = document.getElementById('modalError');
+      if(!teacherId ||!streamId) { errorEl.textContent = 'Select teacher and stream'; errorEl.classList.remove('hidden'); return; }
+      try {
+        const q = query(collection(db, "schools", currentSchoolId, "classTeachers"), where("streamId", "==", streamId));
+        const snap = await getDocs(q);
+        const deletes = snap.docs.map(d => deleteDoc(doc(db, "schools", currentSchoolId, "classTeachers", d.id)));
+        await Promise.all(deletes);
+
+        await addDoc(collection(db, "schools", currentSchoolId, "classTeachers"), { teacherId, streamId, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+        alert('Class Teacher reassigned successfully');
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveAssignSubjectTeacher() {
+      const teacherId = document.getElementById('assignSubjectTeacher').value;
+      const streamId = document.getElementById('assignSubjectStream').value;
+      const learningAreaId = document.getElementById('assignLearningArea').value;
+      const errorEl = document.getElementById('modalError');
+      if(!teacherId ||!streamId ||!learningAreaId) { errorEl.textContent = 'Select all fields'; errorEl.classList.remove('hidden'); return; }
+      try {
+        await addDoc(collection(db, "schools", currentSchoolId, "subjectTeachers"), { teacherId, streamId, learningAreaId, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+        alert('Subject Teacher assigned successfully');
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+
+    async function saveAssignRank() {
+      const teacherId = document.getElementById('rankTeacher').value;
+      const rank = document.getElementById('rankValue').value;
+      const errorEl = document.getElementById('modalError');
+      if(!teacherId ||!rank) { errorEl.textContent = 'Select teacher and rank'; errorEl.classList.remove('hidden'); return; }
+      try {
+        const q = query(collection(db, "schools", currentSchoolId, "teacherRanks"), where("teacherId", "==", teacherId));
+        const snap = await getDocs(q);
+        const deletes = snap.docs.map(d => deleteDoc(doc(db, "schools", currentSchoolId, "teacherRanks", d.id)));
+        await Promise.all(deletes);
+
+        await addDoc(collection(db, "schools", currentSchoolId, "teacherRanks"), { teacherId, rank, createdAt: serverTimestamp() });
+        closeModal(); loadAdminData();
+        alert('Rank reassigned successfully');
+      } catch (e) { errorEl.textContent = 'Error: ' + e.message; errorEl.classList.remove('hidden'); }
+    }
+    // MARKS UPLOAD
+    window.showUploadMarks = async () => {
+      if (!checkSchoolId()) return;
+
+      const myAssignments = [];
+      const subjectTeachersSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "subjectTeachers"), where("teacherId", "==", auth.currentUser.uid)));
+
+      subjectTeachersSnap.forEach(d => {
+        const data = d.data();
+        const stream = cachedStreams.find(s=>s.id==data.streamId);
+        const cls = stream?cachedClasses.find(c=>c.id==stream.classId):null;
+        const la = cachedLearningAreas.find(la=>la.id==data.learningAreaId);
+        if (stream && cls && la) {
+          myAssignments.push({
+            streamId: data.streamId,
+            streamName: `${cls.name} ${stream.name}`,
+            learningAreaId: data.learningAreaId,
+            learningAreaName: la.name
+          });
+        }
+      });
+
+      if (myAssignments.length === 0) {
+        alert('No subjects assigned to you yet. Contact admin.');
+        return;
+      }
+
+      let assignmentOptions = myAssignments.map((a,i) =>
+        `<option value="${i}">${a.streamName} - ${a.learningAreaName}</option>`
+      ).join('');
+
+      openModal('Upload Marks', `
+        <select id="markAssignment" class="w-full p-2 border rounded mb-2" onchange="loadStudentsForMarking()">
+          <option value="">Select Class & Subject</option>
+          ${assignmentOptions}
+        </select>
+        <select id="markTerm" class="w-full p-2 border rounded mb-2">
+          <option value="Term 1">Term 1</option>
+          <option value="Term 2">Term 2</option>
+          <option value="Term 3">Term 3</option>
+        </select>
+        <div id="studentsMarksList" class="max-h-80 overflow-y-auto border rounded p-2"></div>
+      `, saveMarksBulk);
+
+      window.markAssignments = myAssignments;
+    };
+
+    window.loadStudentsForMarking = async () => {
+      const idx = document.getElementById('markAssignment').value;
+      if (idx === '') return;
+
+      const assignment = window.markAssignments[idx];
+      const studentsSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "students"), where("streamId", "==", assignment.streamId)));
+      cachedStudents = studentsSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+      let html = '<table class="w-full text-sm"><thead><tr><th class="text-left p-1">Learner</th><th class="text-left p-1">Score</th></tr></thead><tbody>';
+      cachedStudents.forEach(s => {
+        html += `<tr>
+          <td class="p-1">${s.name}<br><span class="text-xs text-gray-500">Adm: ${s.admission}</span></td>
+          <td class="p-1"><input type="number" min="0" max="100" id="score_${s.id}" class="w-20 p-1 border rounded" placeholder="0-100"></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('studentsMarksList').innerHTML = html || '<p class="text-gray-500">No learners in this stream</p>';
+    };
+
+    async function saveMarksBulk() {
+      const idx = document.getElementById('markAssignment').value;
+      const term = document.getElementById('markTerm').value;
+      const errorEl = document.getElementById('modalError');
+
+      if (idx === '') { errorEl.textContent = 'Select class & subject'; errorEl.classList.remove('hidden'); return; }
+
+      const assignment = window.markAssignments[idx];
+      const batch = [];
+
+      for (const s of cachedStudents) {
+        const scoreVal = document.getElementById(`score_${s.id}`).value;
+        if (scoreVal!== '') {
+          const score = Number(scoreVal);
+          if (score < 0 || score > 100) {
+            errorEl.textContent = `Invalid score for ${s.name}. Use 0-100`;
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          const grade = getGradeFromScore(score);
+
+          batch.push(addDoc(collection(db, "schools", currentSchoolId, "marks"), {
+            studentId: s.id,
+            studentName: s.name,
+            admission: s.admission,
+            streamId: assignment.streamId,
+            learningAreaId: assignment.learningAreaId,
+            learningAreaName: assignment.learningAreaName,
+            score: score,
+            grade: grade,
+            term: term,
+            teacherId: auth.currentUser.uid,
+            teacherEmail: auth.currentUser.email,
+            createdAt: serverTimestamp()
+          }));
+        }
+      }
+
+      if (batch.length === 0) {
+        errorEl.textContent = 'Enter at least one score';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        await Promise.all(batch);
+        closeModal();
+        alert(`${batch.length} marks uploaded successfully`);
+        loadTeacherData();
+      } catch (e) {
+        errorEl.textContent = 'Error: ' + e.message;
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    // REPORT CARD GENERATION
+    window.showGenerateReports = async () => {
+      const myStreams = [];
+      const subjectTeachersSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "subjectTeachers"), where("teacherId", "==", auth.currentUser.uid)));
+      subjectTeachersSnap.forEach(d => {
+        const data = d.data();
+        if (!myStreams.find(s=>s.id==data.streamId)) {
+          const stream = cachedStreams.find(s=>s.id==data.streamId);
+          const cls = stream?cachedClasses.find(c=>c.id==stream.classId):null;
+          if (stream && cls) myStreams.push({id: data.streamId, name: `${cls.name} ${stream.name}`});
+        }
+      });
+
+      if (myStreams.length === 0) {
+        alert('No classes assigned to you');
+        return;
+      }
+
+      let streamOptions = myStreams.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      openModal('Generate Report Cards', `
+        <select id="reportStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <select id="reportTerm" class="w-full p-2 border rounded mb-2">
+          <option value="Term 1">Term 1</option>
+          <option value="Term 2">Term 2</option>
+          <option value="Term 3">Term 3</option>
+        </select>
+      `, generateReportsForStream);
+    };
+
+    window.showGenerateReportsAdmin = async () => {
+      let streamOptions = cachedStreams.map(s => {
+        const cls = cachedClasses.find(c=>c.id==s.classId);
+        return `<option value="${s.id}">${cls?.name||'Unknown'} ${s.name}</option>`;
+      }).join('');
+
+      openModal('Generate Report Cards - Admin', `
+        <select id="reportStream" class="w-full p-2 border rounded mb-2">
+          <option value="">Select Stream</option>
+          ${streamOptions}
+        </select>
+        <select id="reportTerm" class="w-full p-2 border rounded mb-2">
+          <option value="Term 1">Term 1</option>
+          <option value="Term 2">Term 2</option>
+          <option value="Term 3">Term 3</option>
+        </select>
+      `, generateReportsForStream);
+    };
+
+    async function generateReportsForStream() {
+      const streamId = document.getElementById('reportStream').value;
+      const term = document.getElementById('reportTerm').value;
+      const errorEl = document.getElementById('modalError');
+
+      if (!streamId) { errorEl.textContent = 'Select a stream'; errorEl.classList.remove('hidden'); return; }
+
+      try {
+        const studentsSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "students"), where("streamId", "==", streamId)));
+        const marksSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "marks"), where("streamId", "==", streamId), where("term", "==", term)));
+
+        const stream = cachedStreams.find(s=>s.id==streamId);
+        const cls = cachedClasses.find(c=>c.id==stream.classId);
+        const schoolDoc = await getDoc(doc(db, "schools", currentSchoolId));
+        const schoolName = schoolDoc.data().name;
+
+        const doc = new window.jsPDF();
+        let isFirst = true;
+
+        for (const studentDoc of studentsSnap.docs) {
+          const s = studentDoc.data();
+          if (!isFirst) doc.addPage();
+          isFirst = false;
+
+          const studentMarks = marksSnap.docs.filter(m => m.data().studentId == studentDoc.id).map(m=>m.data());
+
+          doc.setFontSize(16);
+          doc.text(schoolName, 105, 15, {align: 'center'});
+          doc.setFontSize(12);
+          doc.text(`${term} Report Card`, 105, 22, {align: 'center'});
+
+          doc.setFontSize(10);
+          doc.text(`Name: ${s.name}`, 15, 35);
+          doc.text(`Adm No: ${s.admission}`, 15, 42);
+          doc.text(`UPI: ${s.upi||'N/A'}`, 15, 49);
+          doc.text(`Class: ${cls.name} ${stream.name}`, 110, 35);
+          doc.text(`Term: ${term}`, 110, 42);
+
+          let y = 60;
+          doc.setFontSize(9);
+          doc.text('Learning Area', 15, y);
+          doc.text('Score', 90, y);
+          doc.text('Grade', 120, y);
+          doc.text('Teacher', 150, y);
+          y += 5;
+          doc.line(15, y, 195, y);
+          y += 5;
+
+          let total = 0;
+          studentMarks.forEach(m => {
+            doc.text(m.learningAreaName.substring(0,25), 15, y);
+            doc.text(String(m.score), 90, y);
+            doc.text(m.grade, 120, y);
+            doc.text(m.teacherEmail.split('@')[0].substring(0,15), 150, y);
+            total += m.score;
+            y += 7;
+          });
+
+          y += 3;
+          doc.line(15, y, 195, y);
+          y += 7;
+          const mean = studentMarks.length > 0? (total / studentMarks.length).toFixed(1) : 0;
+          doc.setFontSize(11);
+          doc.text(`Mean Score: ${mean}`, 15, y);
+          doc.text(`Overall Grade: ${getOverallGrade(mean)}`, 110, y);
+
+          y += 15;
+          doc.setFontSize(9);
+          doc.text('Class Teacher Comment: _________________________________', 15, y);
+          y += 10;
+          doc.text('Principal Comment: ____________________________________', 15, y);
+        }
+
+        doc.save(`${cls.name}_${stream.name}_${term}_Reports.pdf`);
+        closeModal();
+        alert('Report cards generated successfully');
+      } catch (e) {
+        errorEl.textContent = 'Error: ' + e.message;
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    window.viewMyClasses = () => {
+      alert('My Classes view - Shows all streams/subjects assigned to you');
+    };
+
+    // LOAD FUNCTIONS
+    async function loadAdminData() {
+      if(!currentSchoolId) return;
+      const [teachersSnap, studentsSnap, classesSnap, streamsSnap, learningAreasSnap, classTeachersSnap, subjectTeachersSnap, ranksSnap] = await Promise.all([
+        getDocs(collection(db, "schools", currentSchoolId, "teachers")),
+        getDocs(collection(db, "schools", currentSchoolId, "students")),
+        getDocs(collection(db, "schools", currentSchoolId, "classes")),
+        getDocs(collection(db, "schools", currentSchoolId, "streams")),
+        getDocs(collection(db, "schools", currentSchoolId, "learningAreas")),
+        getDocs(collection(db, "schools", currentSchoolId, "classTeachers")),
+        getDocs(collection(db, "schools", currentSchoolId, "subjectTeachers")),
+        getDocs(collection(db, "schools", currentSchoolId, "teacherRanks"))
+      ]);
+
+      cachedTeachers = teachersSnap.docs.map(d=>({id:d.id,...d.data()}));
+      cachedClasses = classesSnap.docs.map(d=>({id:d.id,...d.data()}));
+      cachedStreams = streamsSnap.docs.map(d=>({id:d.id,...d.data()}));
+      cachedLearningAreas = learningAreasSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+      let teachersList = '';
+      cachedTeachers.forEach(t => {
+        const rank = ranksSnap.docs.find(r=>r.data().teacherId==t.id)?.data().rank||'Teacher';
+        const ct = classTeachersSnap.docs.find(ct=>ct.data().teacherId==t.id);
+        const streamName = ct? cachedStreams.find(s=>s.id==ct.data().streamId)?.name:'';
+        const className = ct? cachedClasses.find(c=>c.id==cachedStreams.find(s=>s.id==ct.data().streamId)?.classId)?.name:'';
+        const subjects = subjectTeachersSnap.docs.filter(st=>st.data().teacherId==t.id).map(st=>{
+          const la = cachedLearningAreas.find(la=>la.id==st.data().learningAreaId);
+          const str = cachedStreams.find(s=>s.id==st.data().streamId);
+          const cls = str?cachedClasses.find(c=>c.id==str.classId):null;
+          return `${la?.name||'Unknown'} - ${cls?.name||''} ${str?.name||''} <button onclick="deleteItem('subjectTeachers','${st.id}',true)" class="text-red-500 text-xs ml-1">[x]</button>`;
+        }).join('<br>');
+        teachersList += `<div class="p-2 border-b text-sm">
+          <div class="flex justify-between items-start">
+            <div><b>${t.name}</b><br>${t.email}<br>TSC: ${t.tsc||'N/A'}<br>Rank: ${rank}${className?`<br>Class Teacher: ${className} ${streamName}`:''}${subjects?`<br><u>Subjects:</u><br>${subjects}`:''}</div>
+            <div class="flex gap-1">
+              <button onclick="editTeacher('${t.id}')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs">Edit</button>
+              <button onclick="deleteItem('teachers','${t.id}',true)" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Del</button>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      let studentsList = '';
+      studentsSnap.forEach(d => {
+        const s = d.data();
+        const stream = cachedStreams.find(st=>st.id==s.streamId);
+        const cls = stream?cachedClasses.find(c=>c.id==stream.classId):null;
+        studentsList += `<div class="p-2 border-b text-sm">
+          <div class="flex justify-between items-start">
+            <div><b>${s.name}</b><br>Adm: ${s.admission||'N/A'} | UPI: ${s.upi||'N/A'} | Assess: ${s.assessment||'N/A'}<br>${cls?cls.name:''} ${stream?stream.name:''}</div>
+            <div class="flex gap-1">
+              <button onclick='editStudent("${d.id}", ${JSON.stringify(s).replace(/"/g, "&quot;")})' class="bg-blue-500 text-white px-2 py-1 rounded text-xs">Edit</button>
+              <button onclick="deleteItem('students','${d.id}',true)" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Del</button>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      let classesList = '';
+      cachedClasses.forEach(c => {
+        const streams = cachedStreams.filter(s=>s.classId==c.id).map(s=>`${s.name} <button onclick="deleteItem('streams','${s.id}',true)" class="text-red-500 text-xs">[x]</button>`).join(', ');
+        classesList += `<div class="p-2 border-b text-sm">
+          <div class="flex justify-between items-start">
+            <div><b>${c.name}</b><br>Streams: ${streams||'None'}</div>
+            <button onclick="deleteItem('classes','${c.id}',true)" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Del</button>
+          </div>
+        </div>`;
+      });
+
+      let laList = '';
+      cachedLearningAreas.forEach(s => {
+        laList += `<div class="p-2 border-b text-sm flex justify-between items-center">
+          <span><b>${s.name}</b> ${s.code?`(${s.code})`:''}</span>
+          <button onclick="deleteItem('learningAreas','${s.id}',true)" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Del</button>
+        </div>`;
+      });
+
+      let html = `
+        <div class="grid grid-cols-5 gap-4 mb-6">
+          <div class="border p-3 rounded text-center"><h4 class="font-bold text-gray-600">Teachers</h4><p class="text-2xl font-bold">${teachersSnap.size}</p></div>
+          <div class="border p-3 rounded text-center"><h4 class="font-bold text-gray-600">Students</h4><p class="text-2xl font-bold">${studentsSnap.size}</p></div>
+          <div class="border p-3 rounded text-center"><h4 class="font-bold text-gray-600">Classes</h4><p class="text-2xl font-bold">${classesSnap.size}</p></div>
+          <div class="border p-3 rounded text-center"><h4 class="font-bold text-gray-600">Streams</h4><p class="text-2xl font-bold">${streamsSnap.size}</p></div>
+          <div class="border p-3 rounded text-center"><h4 class="font-bold text-gray-600">Learning Areas</h4><p class="text-2xl font-bold">${learningAreasSnap.size}</p></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="border p-3 rounded">
+            <h4 class="font-bold mb-2 text-blue-600">Teachers</h4>
+            <div class="max-h-60 overflow-y-auto">${teachersList||'<p class="text-gray-500 text-sm">No teachers yet</p>'}</div>
+          </div>
+          <div class="border p-3 rounded">
+            <h4 class="font-bold mb-2 text-purple-600">Learners</h4>
+            <div class="max-h-60 overflow-y-auto">${studentsList||'<p class="text-gray-500 text-sm">No learners yet</p>'}</div>
+          </div>
+          <div class="border p-3 rounded">
+            <h4 class="font-bold mb-2 text-orange-600">Classes & Streams</h4>
+            <div class="max-h-60 overflow-y-auto">${classesList||'<p class="text-gray-500 text-sm">No classes yet</p>'}</div>
+          </div>
+          <div class="border p-3 rounded">
+            <h4 class="font-bold mb-2 text-teal-600">Learning Areas</h4>
+            <div class="max-h-60 overflow-y-auto">${laList||'<p class="text-gray-500 text-sm">No learning areas yet</p>'}</div>
+          </div>
+        </div>`;
+      document.getElementById('adminData').innerHTML = html;
+    }
+
+    async function loadTeacherData() {
+      if(!currentSchoolId) return;
+
+      const subjectTeachersSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "subjectTeachers"), where("teacherId", "==", auth.currentUser.uid)));
+      const marksSnap = await getDocs(query(collection(db, "schools", currentSchoolId, "marks"), where("teacherId", "==", auth.currentUser.uid)));
+
+      let assignments = '';
+      subjectTeachersSnap.forEach(d => {
+        const data = d.data();
+        const stream = cachedStreams.find(s=>s.id==data.streamId);
+        const cls = stream?cachedClasses.find(c=>c.id==stream.classId):null;
+        const la = cachedLearningAreas.find(la=>la.id==data.learningAreaId);
+        assignments += `<div class="p-2 border-b text-sm"><b>${la?.name}</b><br>${cls?.name} ${stream?.name}</div>`;
+      });
+
+      let marksList = '';
+      marksSnap.forEach(d => {
+        const m = d.data();
+        marksList += `<div class="p-2 border-b text-sm"><b>${m.studentName}</b> - ${m.learningAreaName}: ${m.score} (${m.grade})</div>`;
+      });
+
+      let html = `
+        <p class="font-bold mb-2">My Subjects: ${subjectTeachersSnap.size}</p>
+        <div class="border p-3 rounded max-h-40 overflow-y-auto mb-4">${assignments||'<p class="text-gray-500 text-sm">No subjects assigned</p>'}</div>
+        <p class="font-bold mb-2">Marks Uploaded: ${marksSnap.size}</p>
+        <div class="border p-3 rounded max-h-60 overflow-y-auto">${marksList||'<p class="text-gray-500 text-sm">No marks uploaded yet</p>'}</div>`;
+      document.getElementById('teacherData').innerHTML = html;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        document.getElementById('loginDiv').style.display = 'none';
+        document.getElementById('setPasswordDiv').style.display = 'none';
+        document.getElementById('dashDiv').style.display = 'block';
+
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (!userDoc.exists()) {
+          document.getElementById('teacherPanel').style.display = 'block';
+          document.getElementById('adminPanel').style.display = 'none';
+          document.getElementById('superAdminPanel').style.display = 'none';
+          document.getElementById('line2').innerText = 'Teacher';
+          document.getElementById('line3').innerText = user.email;
+          return;
+        }
+
+        const userData = userDoc.data();
+        currentUserRole = userData.role || 'none';
+        currentSchoolId = userData.schoolId || null;
+
+        if (currentUserRole === 'super_admin') {
+          document.getElementById('superAdminPanel').style.display = 'block';
+          document.getElementById('adminPanel').style.display = 'none';
+          document.getElementById('teacherPanel').style.display = 'none';
+          document.getElementById('line2').innerText = 'Super Admin';
+          document.getElementById('line3').innerText = '';
+          loadSchools();
+        } else if (currentUserRole === 'teacher') {
+          document.getElementById('teacherPanel').style.display = 'block';
+          document.getElementById('adminPanel').style.display = 'none';
+          document.getElementById('superAdminPanel').style.display = 'none';
+          if (currentSchoolId) {
+            const schoolDoc = await getDoc(doc(db, "schools", currentSchoolId));
+            if (schoolDoc.exists()) document.getElementById('line2').innerText = schoolDoc.data().name;
+          }
+          document.getElementById('line3').innerText = user.email;
+          await loadAdminData();
+          loadTeacherData();
+        } else if (['principal', 'admin'].includes(currentUserRole)) {
+          document.getElementById('superAdminPanel').style.display = 'none';
+          document.getElementById('adminPanel').style.display = 'block';
+          document.getElementById('teacherPanel').style.display = 'none';
+          if (currentSchoolId) {
+            const schoolDoc = await getDoc(doc(db, "schools", currentSchoolId));
+            if (schoolDoc.exists()) document.getElementById('line2').innerText = schoolDoc.data().name;
+          }
+          document.getElementById('line3').innerText = 'Admin';
+          loadAdminData();
+        }
+      } else {
+        document.getElementById('loginDiv').style.display = 'block';
+        document.getElementById('dashDiv').style.display = 'none';
+        document.getElementById('setPasswordDiv').style.display = 'none';
+        currentSchoolId = null; currentUserRole = null;
+      }
+    });
+  </script>
+</body>
+</html>
