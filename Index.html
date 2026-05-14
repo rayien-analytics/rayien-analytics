@@ -1,1 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rayien Analytics Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+   .hidden { display: none; }
+   .loader {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #2563eb;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
 
+  <!-- App Container -->
+  <div id="app" class="min-h-screen">
+
+    <!-- Auth Section -->
+    <div id="authSection" class="flex items-center justify-center min-h-screen px-4">
+      <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-4 text-center">Rayien Analytics</h2>
+        <input id="email" type="email" placeholder="Email" class="border p-2 w-full mb-3 rounded">
+        <input id="password" type="password" placeholder="Password" class="border p-2 w-full mb-3 rounded">
+        <button id="loginBtn" class="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700 flex items-center justify-center gap-2">
+          <span id="loginText">Login</span>
+          <div id="loginLoader" class="loader hidden"></div>
+        </button>
+        <p id="authError" class="text-red-500 text-sm mt-2"></p>
+      </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="hidden">
+      <header class="bg-white shadow mb-4">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+          <h1 class="text-xl font-bold">Dashboard</h1>
+          <div class="flex items-center gap-3">
+            <span id="userInfo" class="text-sm text-gray-600"></span>
+            <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <main id="dashboardContent" class="max-w-7xl mx-auto px-4 pb-6"></main>
+    </div>
+
+  </div>
+
+  <script type="module">
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+    import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
+
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AlzaSyAuiX3gWu0GCw-9m4P-Cc3ktpnPK8AEfXw",
+      authDomain: "rayien-analytics.firebaseapp.com",
+      projectId: "rayien-analytics",
+      storageBucket: "rayien-analytics.firebasestorage.app",
+      messagingSenderId: "1021167079161",
+      appId: "1:1021167079161:web:c47b3dce49b0f542045c28"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const functions = getFunctions(app);
+
+    // Global variables
+    let currentUser = null;
+    let userData = null;
+    let userRole = null;
+    let userSchoolId = null;
+
+    // Auth state listener
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        await loadUserData(user);
+        showDashboard();
+      } else {
+        showAuth();
+      }
+    });
+
+    // Load user data and claims
+    async function loadUserData(user) {
+      try {
+        const tokenResult = await user.getIdTokenResult(true);
+        userRole = tokenResult.claims.role || 'teacher';
+        userSchoolId = tokenResult.claims.schoolId || null;
+
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          userData = userDoc.data();
+        } else {
+          userData = { email: user.email, name: user.displayName || 'User' };
+        }
+      } catch (err) {
+        console.error("Error loading user data:", err);
+        document.getElementById('authError').textContent = "Failed to load user data";
+      }
+    }
+
+    // Show/hide sections
+    function showAuth() {
+      document.getElementById('authSection').classList.remove('hidden');
+      document.getElementById('dashboardSection').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('dashboardSection').classList.remove('hidden');
+      document.getElementById('userInfo').textContent = `${userData.name} (${userRole})`;
+      renderDashboard();
+    }
+
+    // Login handler
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('authError');
+      const loader = document.getElementById('loginLoader');
+      const loginText = document.getElementById('loginText');
+
+      if (!email ||!password) {
+        errorEl.textContent = "Please enter email and password";
+        return;
+      }
+
+      loader.classList.remove('hidden');
+      loginText.textContent = "Logging in...";
+      errorEl.textContent = "";
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        errorEl.textContent = err.message;
+        loader.classList.add('hidden');
+        loginText.textContent = "Login";
+      }
+    });
+
+    // Logout handler
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      currentUser = null;
+      userData = null;
+      userRole = null;
+      userSchoolId = null;
+    });
+
+    // Route to correct dashboard based on role
+    function renderDashboard() {
+      const content = document.getElementById('dashboardContent');
+
+      if (userRole === 'superadmin') {
+        renderSuperAdminDashboard(content);
+      } else if (userRole === 'admin') {
+        renderAdminDashboard(content);
+      } else {
+        renderTeacherDashboard(content);
+      }
+    }
+
+    // Teacher Dashboard
+    function renderTeacherDashboard(container) {
+      container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow mb-4 flex items-center gap-4">
+          <img id="profilePic" src="${userData.photoURL || 'https://via.placeholder.com/64'}" class="w-16 h-16 rounded-full object-cover">
+          <div class="flex-1">
+            <p class="font-semibold">${userData.name}</p>
+            <p class="text-sm text-gray-600">${userData.email}</p>
+            <input type="file" id="picUpload" accept="image/*" class="mt-2 text-sm">
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Teachers in Your School</h3>
+          <div id="teacherList" class="space-y-2">Loading...</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Analyzed Results</h3>
+          <div id="resultsTable" class="overflow-x-auto"></div>
+          <canvas id="resultsChart" class="mt-4"></canvas>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="font-semibold mb-3">Search Learner by Admission No</h3>
+          <div class="flex gap-2 mb-3">
+            <input id="admissionInput" type="text" placeholder="Enter admission no" class="border p-2 flex-1 rounded">
+            <button id="searchLearner" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Search</button>
+          </div>
+          <div id="learnerResult"></div>
+        </div>
+      `;
+
+      loadSchoolTeachers(userSchoolId);
+      loadResults(userSchoolId);
+      setupTeacherEvents();
+    }
+
+    async function loadSchoolTeachers(schoolId) {
+      try {
+        const q = query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher"));
+        const snap = await getDocs(q);
+        let html = '';
+        snap.forEach(d => {
+          const t = d.data();
+          html += `<div class="flex items-center gap-3 border p-2 rounded">
+            <img src="${t.photoURL || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full">
+            <div>
+              <p class="font-medium">${t.name}</p>
+              <p class="text-sm text-gray-600">${t.email}</p>
+            </div>
+          </div>`;
+        });
+        document.getElementById('teacherList').innerHTML = html || '<p class="text-gray-500">No teachers found</p>';
+      } catch (err) {
+        document.getElementById('teacherList').innerHTML = '<p class="text-red-500">Error loading teachers</p>';
+      }
+    }
+
+    async function loadResults(schoolId) {
+      try {
+        const q = query(collection(db, "results"), where("schoolId", "==", schoolId));
+        const snap = await getDocs(q);
+
+        let tableHtml = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Student</th><th class="text-left p-2">Subject</th><th class="text-left p-2">Score</th></tr></thead><tbody>';
+        const subjectScores = {};
+
+        snap.forEach(d => {
+          const r = d.data();
+          tableHtml += `<tr class="border-b"><td class="p-2">${r.studentId}</td><td class="p-2">${r.subject}</td><td class="p-2">${r.score}</td></tr>`;
+          subjectScores[r.subject] = (subjectScores[r.subject] || 0) + r.score;
+        });
+        tableHtml += '</tbody></table>';
+        document.getElementById('resultsTable').innerHTML = tableHtml || '<p class="text-gray-500">No results found</p>';
+
+        if (Object.keys(subjectScores).length > 0) {
+          new Chart(document.getElementById('resultsChart'), {
+            type: 'bar',
+            data: {
+              labels: Object.keys(subjectScores),
+              datasets: [{ label: 'Total Score by Subject', data: Object.values(subjectScores), backgroundColor: '#2563eb' }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+          });
+        }
+      } catch (err) {
+        document.getElementById('resultsTable').innerHTML = '<p class="text-red-500">Error loading results</p>';
+      }
+    }
+
+    function setupTeacherEvents() {
+      document.getElementById('picUpload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const storageRef = ref(storage, `profilePics/${currentUser.uid}/${file.name}`);
+          await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(storageRef);
+          await updateDoc(doc(db, "users", currentUser.uid), { photoURL: url });
+          document.getElementById('profilePic').src = url;
+          alert('Profile picture updated');
+        } catch (err) {
+          alert('Error uploading picture: ' + err.message);
+        }
+      });
+
+      document.getElementById('searchLearner').addEventListener('click', async () => {
+        const admNo = document.getElementById('admissionInput').value.trim();
+        if (!admNo) return;
+        const q = query(collection(db, "learners"), where("admissionNo", "==", admNo), where("schoolId", "==", userSchoolId));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          document.getElementById('learnerResult').innerHTML = '<p class="text-gray-500">Learner not found</p>';
+          return;
+        }
+        const learnerDoc = snap.docs[0];
+        const learner = learnerDoc.data();
+        document.getElementById('learnerResult').innerHTML = `
+          <div class="border p-3 rounded">
+            <img src="${learner.photoURL || 'https://via.placeholder.com/80'}" class="w-20 h-20 rounded-full mb-2">
+            <p><b>Name:</b> ${learner.name}</p>
+            <p><b>Admission No:</b> ${learner.admissionNo}</p>
+            <input type="file" id="learnerPicUpload" accept="image/*" class="mt-2">
+          </div>
+        `;
+        document.getElementById('learnerPicUpload').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const refPath = ref(storage, `learnerPics/${userSchoolId}/${learner.admissionNo}`);
+          await uploadBytes(refPath, file);
+          const url = await getDownloadURL(refPath);
+          await updateDoc(learnerDoc.ref, { photoURL: url });
+          alert('Learner picture uploaded');
+        });
+      });
+    }
+
+    // Admin Dashboard
+    function renderAdminDashboard(container) {
+      container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Add Teacher</h3>
+          <input id="teacherEmail" type="email" placeholder="Email" class="border p-2 w-full mb-2 rounded">
+          <input id="teacherName" type="text" placeholder="Full Name" class="border p-2 w-full mb-2 rounded">
+          <input id="teacherPass" type="password" placeholder="Password" class="border p-2 w-full mb-2 rounded">
+          <button id="addTeacherBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
+            <span>Create Teacher</span>
+            <div id="createLoader" class="loader hidden"></div>
+          </button>
+          <p id="addTeacherStatus" class="text-sm mt-2"></p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold mb-3">All Teachers</h3>
+            <div id="teacherList" class="space-y-2 max-h-64 overflow-y-auto">Loading...</div>
+          </div>
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-semibold mb-3">All Learners</h3>
+            <div id="learnerList" class="space-y-2 max-h-64 overflow-y-auto">Loading...</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="font-semibold mb-3">School Results Overview</h3>
+          <canvas id="schoolChart"></canvas>
+        </div>
+      `;
+
+      loadAdminData(userSchoolId);
+      setupAdminEvents();
+    }
+
+    async function loadAdminData(schoolId) {
+      try {
+        const tSnap = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
+        let teacherHtml = '';
+        tSnap.forEach(d => {
+          const t = d.data();
+          teacherHtml += `<div class="border p-2 rounded flex items-center gap-2">
+            <img src="${t.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full">
+            <div>
+              <p class="font-medium text-sm">${t.name}</p>
+              <p class="text-xs text-gray-600">${t.email}</p>
+            </div>
+          </div>`;
+        });
+        document.getElementById('teacherList').innerHTML = teacherHtml || '<p class="text-gray-500 text-sm">No teachers</p>';
+
+        const lSnap = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
+        let learnerHtml = '';
+        lSnap.forEach(d => {
+          const l = d.data();
+          learnerHtml += `<div class="border p-2 rounded">
+            <p class="font-medium text-sm">${l.name}</p>
+            <p class="text-xs text-gray-600">Adm: ${l.admissionNo}</p>
+          </div>`;
+        });
+        document.getElementById('learnerList').innerHTML = learnerHtml || '<p class="text-gray-500 text-sm">No learners</p>';
+
+        const rSnap = await getDocs(query(collection(db, "results"), where("schoolId", "==", schoolId)));
+        const avgByClass = {};
+        rSnap.forEach(d => {
+          const r = d.data();
+          if (!avgByClass[r.class]) avgByClass[r.class] = [];
+          avgByClass[r.class].push(r.score);
+        });
+
+        const labels = Object.keys(avgByClass);
+        const data = labels.map(c => {
+          const scores = avgByClass[c];
+          return scores.reduce((a,b) => a + b, 0) / scores.length;
+        });
+
+        if (labels.length > 0) {
+          new Chart(document.getElementById('schoolChart'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Avg Score by Class', data, backgroundColor: '#16a34a' }] },
+            options: { responsive: true }
+          });
+        }
+      } catch (err) {
+        console.error("Error loading admin data:", err);
+      }
+    }
+
+    function setupAdminEvents() {
+      const createTeacher = httpsCallable(functions, 'createTeacherAccount');
+      document.getElementById('addTeacherBtn').onclick = async () => {
+        const email = document.getElementById('teacherEmail').value.trim();
+        const name = document.getElementById('teacherName').value.trim();
+        const pass = document.getElementById('teacherPass').value;
+        const statusEl = document.getElementById('addTeacherStatus');
+        const loader = document.getElementById('createLoader');
+
+        if (!email ||!name ||!pass) {
+          statusEl.textContent = "Please fill all fields";
+          statusEl.className = "text-sm mt-2 text-red-500";
+          return;
+        }
+
+        loader.classList.remove('hidden');
+        statusEl.textContent = "Creating...";
+        statusEl.className = "text-sm mt-2 text-blue-600";
+
+        try {
+          await createTeacher({ email, password: pass, name, schoolId: userSchoolId, role: "teacher" });
+          statusEl.textContent = `Teacher ${name} created successfully`;
+          statusEl.className = "text-sm mt-2 text-green-600";
+          document.getElementById('teacherEmail').value = '';
+          document.getElementById('teacherName').value = '';
+          document.getElementById('teacherPass').value = '';
+          loadAdminData(userSchoolId);
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + err.message;
+          statusEl.className = "text-sm mt-2 text-red-500";
+        } finally {
+          loader.classList.add('hidden');
+        }
+      };
+    }
+
+    // Super Admin Dashboard
+    function renderSuperAdminDashboard(container) {
+      container.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Create School Admin</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <input id="adminEmail" type="email" placeholder="Email" class="border p-2 rounded">
+            <input id="adminName" type="text" placeholder="Full Name" class="border p-2 rounded">
+            <input id="adminPass" type="password" placeholder="Password" class="border p-2 rounded">
+            <input id="schoolId" type="text" placeholder="School ID" class="border p-2 rounded">
+          </div>
+          <button id="addAdminBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-3 flex items-center gap-2">
+            <span>Create Admin</span>
+            <div id="adminLoader" class="loader hidden"></div>
+          </button>
+          <p id="addAdminStatus" class="text-sm mt-2"></p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h3 class="font-semibold mb-3">All Schools Overview</h3>
+          <div id="schoolsOverview">Loading...</div>
+        </div>
+      `;
+
+      loadAllSchools();
+      setupSuperAdminEvents();
+    }
+
+    async function loadAllSchools() {
+      try {
+        const schools = await getDocs(collection(db, "schools"));
+        let html = '';
+        for (const s of schools.docs) {
+          const schoolId = s.id;
+          const schoolData = s.data();
+          const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
+          const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
+          html += `
+            <div class="border p-3 mb-2 rounded hover:bg-gray-50">
+              <p class="font-semibold">${schoolData.name || schoolId}</p>
+              <p class="text-sm text-gray-600">School ID: ${schoolId}</p>
+              <p class="text-sm mt-1">Teachers: ${teachers.size} | Learners: ${learners.size}</p>
+            </div>
+          `;
+        }
+        document.getElementById('schoolsOverview').innerHTML = html || '<p class="text-gray-500">No schools found</p>';
+      } catch (err) {
+        document.getElementById('schoolsOverview').innerHTML = '<p class="text-red-500">Error loading schools</p>';
+        console.error(err);
+      }
+    }
+
+    function setupSuperAdminEvents() {
+      const createAdmin = httpsCallable(functions, 'createAdminAccount');
+      document.getElementById('addAdminBtn').onclick = async () => {
+        const email = document.getElementById('adminEmail').value.trim();
+        const name = document.getElementById('adminName').value.trim();
+        const pass = document.getElementById('adminPass').value;
+        const schoolId = document.getElementById('schoolId').value.trim();
+        const statusEl = document.getElementById('addAdminStatus');
+        const loader = document.getElementById('adminLoader');
+
+        if (!email ||!name ||!pass ||!schoolId) {
+          statusEl.textContent = "Please fill all fields";
+          statusEl.className = "text-sm mt-2 text-red-500";
+          return;
+        }
+
+        loader.classList.remove('hidden');
+        statusEl.textContent = "Creating...";
+        statusEl.className = "text-sm mt-2 text-blue-600";
+
+        try {
+          await createAdmin({ email, password: pass, name, schoolId, role: "admin" });
+          statusEl.textContent = `Admin ${name} created for school ${schoolId}`;
+          statusEl.className = "text-sm mt-2 text-green-600";
+          document.getElementById('adminEmail').value = '';
+          document.getElementById('adminName').value = '';
+          document.getElementById('adminPass').value = '';
+          document.getElementById('schoolId').value = '';
+          loadAllSchools();
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + err.message;
+          statusEl.className = "text-sm mt-2 text-red-500";
+        } finally {
+          loader.classList.add('hidden');
+        }
+      };
+    }
+  </script>
+</body>
+</html>
