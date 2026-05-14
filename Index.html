@@ -4,11 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rayien Analytics Dashboard</title>
+  
+  <!-- PWA Setup -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
-   .hidden { display: none; }
-   .loader {
+    .hidden { display: none; }
+    .loader {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #2563eb;
       border-radius: 50%;
@@ -40,7 +52,6 @@
         <p id="authError" class="text-red-500 text-sm mt-2"></p>
       </div>
     </div>
-
     <!-- Dashboard Section -->
     <div id="dashboardSection" class="hidden">
       <header class="bg-white shadow mb-4">
@@ -89,7 +100,6 @@
     let userData = null;
     let userRole = null;
     let userSchoolId = null;
-
     // Auth state listener
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -141,7 +151,7 @@
       const loader = document.getElementById('loginLoader');
       const loginText = document.getElementById('loginText');
 
-      if (!email ||!password) {
+      if (!email || !password) {
         errorEl.textContent = "Please enter email and password";
         return;
       }
@@ -167,7 +177,6 @@
       userRole = null;
       userSchoolId = null;
     });
-
     // Route to correct dashboard based on role
     function renderDashboard() {
       const content = document.getElementById('dashboardContent');
@@ -239,7 +248,6 @@
         document.getElementById('teacherList').innerHTML = '<p class="text-red-500">Error loading teachers</p>';
       }
     }
-
     async function loadResults(schoolId) {
       try {
         const q = query(collection(db, "results"), where("schoolId", "==", schoolId));
@@ -332,7 +340,6 @@
           </button>
           <p id="addTeacherStatus" class="text-sm mt-2"></p>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="bg-white p-4 rounded-lg shadow">
             <h3 class="font-semibold mb-3">All Teachers</h3>
@@ -416,7 +423,7 @@
         const statusEl = document.getElementById('addTeacherStatus');
         const loader = document.getElementById('createLoader');
 
-        if (!email ||!name ||!pass) {
+        if (!email || !name || !pass) {
           statusEl.textContent = "Please fill all fields";
           statusEl.className = "text-sm mt-2 text-red-500";
           return;
@@ -505,7 +512,7 @@
         const statusEl = document.getElementById('addAdminStatus');
         const loader = document.getElementById('adminLoader');
 
-        if (!email ||!name ||!pass ||!schoolId) {
+        if (!email || !name || !pass || !schoolId) {
           statusEl.textContent = "Please fill all fields";
           statusEl.className = "text-sm mt-2 text-red-500";
           return;
