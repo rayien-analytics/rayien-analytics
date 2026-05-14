@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rayien Analytics Dashboard</title>
-  
+
   <!-- PWA Setup -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
@@ -13,14 +13,14 @@
       navigator.serviceWorker.register('sw.js');
     }
   </script>
-  
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
-    .hidden { display: none; }
-    .loader {
+  .hidden { display: none; }
+  .loader {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #2563eb;
       border-radius: 50%;
@@ -32,11 +32,12 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
 </head>
 <body class="bg-gray-100">
 
-  <!-- App Container -->
   <div id="app" class="min-h-screen">
 
     <!-- Auth Section -->
@@ -52,6 +53,7 @@
         <p id="authError" class="text-red-500 text-sm mt-2"></p>
       </div>
     </div>
+
     <!-- Dashboard Section -->
     <div id="dashboardSection" class="hidden">
       <header class="bg-white shadow mb-4">
@@ -70,10 +72,12 @@
   </div>
 
   <script type="module">
+    console.log("JS is running");
+
     // Firebase SDK imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
     import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
@@ -83,7 +87,7 @@
       apiKey: "AlzaSyAuiX3gWu0GCw-9m4P-Cc3ktpnPK8AEfXw",
       authDomain: "rayien-analytics.firebaseapp.com",
       projectId: "rayien-analytics",
-      storageBucket: "rayien-analytics.firebasestorage.app",
+      storageBucket: "rayien-analytics.appspot.com",
       messagingSenderId: "1021167079161",
       appId: "1:1021167079161:web:c47b3dce49b0f542045c28"
     };
@@ -100,8 +104,10 @@
     let userData = null;
     let userRole = null;
     let userSchoolId = null;
+    let userSchoolName = null;
     // Auth state listener
     onAuthStateChanged(auth, async (user) => {
+      console.log("Auth state:", user);
       if (user) {
         currentUser = user;
         await loadUserData(user);
@@ -111,7 +117,6 @@
       }
     });
 
-    // Load user data and claims
     async function loadUserData(user) {
       try {
         const tokenResult = await user.getIdTokenResult(true);
@@ -121,6 +126,8 @@
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           userData = userDoc.data();
+          userSchoolId = userData.schoolId || userSchoolId;
+          userSchoolName = userData.schoolName || userSchoolName;
         } else {
           userData = { email: user.email, name: user.displayName || 'User' };
         }
@@ -130,7 +137,6 @@
       }
     }
 
-    // Show/hide sections
     function showAuth() {
       document.getElementById('authSection').classList.remove('hidden');
       document.getElementById('dashboardSection').classList.add('hidden');
@@ -139,11 +145,11 @@
     function showDashboard() {
       document.getElementById('authSection').classList.add('hidden');
       document.getElementById('dashboardSection').classList.remove('hidden');
-      document.getElementById('userInfo').textContent = `${userData.name} (${userRole})`;
+      document.getElementById('userInfo').textContent = `${userData.name || userData.email} (${userRole})`;
+      document.querySelector('header h1').textContent = userSchoolName || 'Dashboard';
       renderDashboard();
     }
 
-    // Login handler
     document.getElementById('loginBtn').addEventListener('click', async () => {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
@@ -151,7 +157,7 @@
       const loader = document.getElementById('loginLoader');
       const loginText = document.getElementById('loginText');
 
-      if (!email || !password) {
+      if (!email ||!password) {
         errorEl.textContent = "Please enter email and password";
         return;
       }
@@ -169,18 +175,17 @@
       }
     });
 
-    // Logout handler
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await signOut(auth);
       currentUser = null;
       userData = null;
       userRole = null;
       userSchoolId = null;
+      userSchoolName = null;
     });
-    // Route to correct dashboard based on role
+
     function renderDashboard() {
       const content = document.getElementById('dashboardContent');
-
       if (userRole === 'superadmin') {
         renderSuperAdminDashboard(content);
       } else if (userRole === 'admin') {
@@ -190,7 +195,22 @@
       }
     }
 
-    // Teacher Dashboard
+    function setNoDataState(elementId, message = "No data yet") {
+      const el = document.getElementById(elementId);
+      if (el && el.innerHTML.includes("Loading")) {
+        el.innerHTML = `<p class="text-gray-500">${message}</p>`;
+      }
+    }
+
+    async function createUserDoc(uid, data) {
+      await setDoc(doc(db, "users", uid), {
+      ...data,
+        schoolId: userSchoolId,
+        schoolName: userSchoolName,
+        createdAt: serverTimestamp()
+      });
+    }
+    // TEACHER DASHBOARD
     function renderTeacherDashboard(container) {
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4 flex items-center gap-4">
@@ -203,14 +223,29 @@
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Teachers in Your School</h3>
-          <div id="teacherList" class="space-y-2">Loading...</div>
+          <h3 class="font-semibold mb-3">Upload Marks</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+            <select id="examSelect" class="border p-2 rounded"><option>Loading exams...</option></select>
+            <select id="classSelect" class="border p-2 rounded"><option>Select Class</option></select>
+            <input id="subjectInput" type="text" placeholder="Subject e.g. Math" class="border p-2 rounded">
+            <button id="loadStudentsBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Load Students</button>
+          </div>
+          <div id="marksTable" class="overflow-x-auto"></div>
+          <div class="mt-3 flex gap-2">
+            <button id="saveMarksBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 hidden">Save Marks</button>
+            <p id="marksStatus" class="text-sm"></p>
+          </div>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Analyzed Results</h3>
-          <div id="resultsTable" class="overflow-x-auto"></div>
-          <canvas id="resultsChart" class="mt-4"></canvas>
+          <h3 class="font-semibold mb-3">Results Analysis</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+            <select id="analysisExam" class="border p-2 rounded"><option>Select Exam</option></select>
+            <select id="analysisClass" class="border p-2 rounded"><option>Select Class</option></select>
+            <button id="analyzeBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Analyze</button>
+          </div>
+          <div id="analysisTable" class="overflow-x-auto"></div>
+          <canvas id="analysisChart" class="mt-4"></canvas>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow">
@@ -223,75 +258,145 @@
         </div>
       `;
 
-      loadSchoolTeachers(userSchoolId);
-      loadResults(userSchoolId);
+      loadTeacherExams();
       setupTeacherEvents();
     }
 
-    async function loadSchoolTeachers(schoolId) {
-      try {
-        const q = query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher"));
-        const snap = await getDocs(q);
-        let html = '';
-        snap.forEach(d => {
-          const t = d.data();
-          html += `<div class="flex items-center gap-3 border p-2 rounded">
-            <img src="${t.photoURL || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full">
-            <div>
-              <p class="font-medium">${t.name}</p>
-              <p class="text-sm text-gray-600">${t.email}</p>
-            </div>
-          </div>`;
-        });
-        document.getElementById('teacherList').innerHTML = html || '<p class="text-gray-500">No teachers found</p>';
-      } catch (err) {
-        document.getElementById('teacherList').innerHTML = '<p class="text-red-500">Error loading teachers</p>';
-      }
+    async function loadTeacherExams() {
+      const examSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
+      let examOptions = '<option value="">Select Exam</option>';
+      let classes = new Set();
+
+      examSnap.forEach(d => {
+        const e = d.data();
+        examOptions += `<option value="${d.id}">${e.examName} - ${e.term} ${e.year}</option>`;
+        e.classes.forEach(c => classes.add(c));
+      });
+
+      document.getElementById('examSelect').innerHTML = examOptions;
+      document.getElementById('analysisExam').innerHTML = examOptions;
+
+      let classOptions = '<option value="">Select Class</option>';
+      classes.forEach(c => classOptions += `<option value="${c}">${c}</option>`);
+      document.getElementById('classSelect').innerHTML = classOptions;
+      document.getElementById('analysisClass').innerHTML = classOptions;
     }
-    async function loadResults(schoolId) {
-      try {
-        const q = query(collection(db, "results"), where("schoolId", "==", schoolId));
-        const snap = await getDocs(q);
-
-        let tableHtml = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Student</th><th class="text-left p-2">Subject</th><th class="text-left p-2">Score</th></tr></thead><tbody>';
-        const subjectScores = {};
-
-        snap.forEach(d => {
-          const r = d.data();
-          tableHtml += `<tr class="border-b"><td class="p-2">${r.studentId}</td><td class="p-2">${r.subject}</td><td class="p-2">${r.score}</td></tr>`;
-          subjectScores[r.subject] = (subjectScores[r.subject] || 0) + r.score;
-        });
-        tableHtml += '</tbody></table>';
-        document.getElementById('resultsTable').innerHTML = tableHtml || '<p class="text-gray-500">No results found</p>';
-
-        if (Object.keys(subjectScores).length > 0) {
-          new Chart(document.getElementById('resultsChart'), {
-            type: 'bar',
-            data: {
-              labels: Object.keys(subjectScores),
-              datasets: [{ label: 'Total Score by Subject', data: Object.values(subjectScores), backgroundColor: '#2563eb' }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-          });
-        }
-      } catch (err) {
-        document.getElementById('resultsTable').innerHTML = '<p class="text-red-500">Error loading results</p>';
-      }
-    }
-
     function setupTeacherEvents() {
       document.getElementById('picUpload').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        try {
-          const storageRef = ref(storage, `profilePics/${currentUser.uid}/${file.name}`);
-          await uploadBytes(storageRef, file);
-          const url = await getDownloadURL(storageRef);
-          await updateDoc(doc(db, "users", currentUser.uid), { photoURL: url });
-          document.getElementById('profilePic').src = url;
-          alert('Profile picture updated');
-        } catch (err) {
-          alert('Error uploading picture: ' + err.message);
+        const storageRef = ref(storage, `profilePics/${currentUser.uid}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        await updateDoc(doc(db, "users", currentUser.uid), { photoURL: url });
+        document.getElementById('profilePic').src = url;
+        alert('Profile picture updated');
+      });
+
+      document.getElementById('loadStudentsBtn').addEventListener('click', async () => {
+        const examId = document.getElementById('examSelect').value;
+        const className = document.getElementById('classSelect').value;
+        const subject = document.getElementById('subjectInput').value.trim();
+
+        if (!examId ||!className ||!subject) {
+          alert('Select exam, class and subject');
+          return;
+        }
+
+        const learnerSnap = await getDocs(query(collection(db, "learners"),
+          where("schoolId", "==", userSchoolId),
+          where("class", "==", className)
+        ));
+
+        let table = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Adm No</th><th class="text-left p-2">Name</th><th class="text-left p-2">Marks</th></tr></thead><tbody>';
+        learnerSnap.forEach(d => {
+          const l = d.data();
+          table += `<tr class="border-b">
+            <td class="p-2">${l.admissionNo}</td>
+            <td class="p-2">${l.name}</td>
+            <td class="p-2"><input type="number" min="0" max="100" data-adm="${l.admissionNo}" data-name="${l.name}" class="markInput border p-1 w-20 rounded"></td>
+          </tr>`;
+        });
+        table += '</tbody></table>';
+
+        document.getElementById('marksTable').innerHTML = table || '<p class="text-gray-500">No students in this class</p>';
+        document.getElementById('saveMarksBtn').classList.toggle('hidden', learnerSnap.empty);
+        document.getElementById('saveMarksBtn').onclick = () => saveMarks(examId, className, subject);
+      });
+
+      async function saveMarks(examId, className, subject) {
+        const inputs = document.querySelectorAll('.markInput');
+        const batch = writeBatch(db);
+        let count = 0;
+
+        inputs.forEach(input => {
+          const score = parseFloat(input.value);
+          if (!isNaN(score)) {
+            const docRef = doc(collection(db, "results"));
+            batch.set(docRef, {
+              examId, class: className, subject,
+              admissionNo: input.dataset.adm,
+              studentName: input.dataset.name,
+              score,
+              schoolId: userSchoolId,
+              enteredBy: currentUser.uid,
+              createdAt: serverTimestamp()
+            });
+            count++;
+          }
+        });
+
+        if (count === 0) {
+          alert('Enter at least one mark');
+          return;
+        }
+
+        await batch.commit();
+        document.getElementById('marksStatus').textContent = `${count} marks saved`;
+        document.getElementById('marksStatus').className = 'text-sm text-green-600';
+      }
+
+      document.getElementById('analyzeBtn').addEventListener('click', async () => {
+        const examId = document.getElementById('analysisExam').value;
+        const className = document.getElementById('analysisClass').value;
+        if (!examId ||!className) return;
+
+        const snap = await getDocs(query(collection(db, "results"),
+          where("schoolId", "==", userSchoolId),
+          where("examId", "==", examId),
+          where("class", "==", className)
+        ));
+
+        const studentScores = {};
+        snap.forEach(d => {
+          const r = d.data();
+          if (!studentScores[r.admissionNo]) {
+            studentScores[r.admissionNo] = { name: r.studentName, total: 0, count: 0 };
+          }
+          studentScores[r.admissionNo].total += r.score;
+          studentScores[r.admissionNo].count++;
+        });
+
+        let table = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Adm No</th><th class="text-left p-2">Name</th><th class="text-left p-2">Avg Score</th></tr></thead><tbody>';
+        const chartLabels = [];
+        const chartData = [];
+
+        Object.entries(studentScores).forEach(([adm, data]) => {
+          const avg = (data.total / data.count).toFixed(1);
+          table += `<tr class="border-b"><td class="p-2">${adm}</td><td class="p-2">${data.name}</td><td class="p-2">${avg}%</td></tr>`;
+          chartLabels.push(data.name);
+          chartData.push(avg);
+        });
+        table += '</tbody></table>';
+
+        document.getElementById('analysisTable').innerHTML = table || '<p class="text-gray-500">No results found</p>';
+
+        if (chartLabels.length > 0) {
+          new Chart(document.getElementById('analysisChart'), {
+            type: 'bar',
+            data: { labels: chartLabels, datasets: [{ label: 'Average Score %', data: chartData, backgroundColor: '#9333ea' }] },
+            options: { responsive: true }
+          });
         }
       });
 
@@ -304,29 +409,18 @@
           document.getElementById('learnerResult').innerHTML = '<p class="text-gray-500">Learner not found</p>';
           return;
         }
-        const learnerDoc = snap.docs[0];
-        const learner = learnerDoc.data();
+        const learner = snap.docs[0].data();
         document.getElementById('learnerResult').innerHTML = `
           <div class="border p-3 rounded">
             <img src="${learner.photoURL || 'https://via.placeholder.com/80'}" class="w-20 h-20 rounded-full mb-2">
             <p><b>Name:</b> ${learner.name}</p>
             <p><b>Admission No:</b> ${learner.admissionNo}</p>
-            <input type="file" id="learnerPicUpload" accept="image/*" class="mt-2">
+            <p><b>Class:</b> ${learner.class}</p>
           </div>
         `;
-        document.getElementById('learnerPicUpload').addEventListener('change', async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const refPath = ref(storage, `learnerPics/${userSchoolId}/${learner.admissionNo}`);
-          await uploadBytes(refPath, file);
-          const url = await getDownloadURL(refPath);
-          await updateDoc(learnerDoc.ref, { photoURL: url });
-          alert('Learner picture uploaded');
-        });
       });
     }
-
-    // Admin Dashboard
+    // ADMIN DASHBOARD
     function renderAdminDashboard(container) {
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
@@ -340,6 +434,20 @@
           </button>
           <p id="addTeacherStatus" class="text-sm mt-2"></p>
         </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Create Exam</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+            <input id="examName" type="text" placeholder="Exam Name e.g. Mid Term" class="border p-2 rounded">
+            <input id="examTerm" type="text" placeholder="Term e.g. Term 2" class="border p-2 rounded">
+            <input id="examYear" type="number" placeholder="Year e.g. 2025" class="border p-2 rounded">
+          </div>
+          <input id="examClasses" type="text" placeholder="Classes/Streams: Form1A,Form1B,Form2A" class="border p-2 w-full mb-2 rounded">
+          <button id="createExamBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Create Exam</button>
+          <p id="examStatus" class="text-sm mt-2"></p>
+          <div id="examList" class="mt-3 space-y-2">Loading...</div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="bg-white p-4 rounded-lg shadow">
             <h3 class="font-semibold mb-3">All Teachers</h3>
@@ -362,60 +470,34 @@
     }
 
     async function loadAdminData(schoolId) {
-      try {
-        const tSnap = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
-        let teacherHtml = '';
-        tSnap.forEach(d => {
-          const t = d.data();
-          teacherHtml += `<div class="border p-2 rounded flex items-center gap-2">
-            <img src="${t.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full">
-            <div>
-              <p class="font-medium text-sm">${t.name}</p>
-              <p class="text-xs text-gray-600">${t.email}</p>
-            </div>
-          </div>`;
-        });
-        document.getElementById('teacherList').innerHTML = teacherHtml || '<p class="text-gray-500 text-sm">No teachers</p>';
+      const tSnap = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
+      let teacherHtml = '';
+      tSnap.forEach(d => {
+        const t = d.data();
+        teacherHtml += `<div class="border p-2 rounded flex items-center gap-2">
+          <img src="${t.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full">
+          <div><p class="font-medium text-sm">${t.name}</p><p class="text-xs text-gray-600">${t.email}</p></div>
+        </div>`;
+      });
+      document.getElementById('teacherList').innerHTML = teacherHtml || '<p class="text-gray-500 text-sm">No teachers</p>';
 
-        const lSnap = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
-        let learnerHtml = '';
-        lSnap.forEach(d => {
-          const l = d.data();
-          learnerHtml += `<div class="border p-2 rounded">
-            <p class="font-medium text-sm">${l.name}</p>
-            <p class="text-xs text-gray-600">Adm: ${l.admissionNo}</p>
-          </div>`;
-        });
-        document.getElementById('learnerList').innerHTML = learnerHtml || '<p class="text-gray-500 text-sm">No learners</p>';
+      const lSnap = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
+      let learnerHtml = '';
+      lSnap.forEach(d => {
+        const l = d.data();
+        learnerHtml += `<div class="border p-2 rounded"><p class="font-medium text-sm">${l.name}</p><p class="text-xs text-gray-600">Adm: ${l.admissionNo} | Class: ${l.class}</p></div>`;
+      });
+      document.getElementById('learnerList').innerHTML = learnerHtml || '<p class="text-gray-500 text-sm">No learners</p>';
 
-        const rSnap = await getDocs(query(collection(db, "results"), where("schoolId", "==", schoolId)));
-        const avgByClass = {};
-        rSnap.forEach(d => {
-          const r = d.data();
-          if (!avgByClass[r.class]) avgByClass[r.class] = [];
-          avgByClass[r.class].push(r.score);
-        });
-
-        const labels = Object.keys(avgByClass);
-        const data = labels.map(c => {
-          const scores = avgByClass[c];
-          return scores.reduce((a,b) => a + b, 0) / scores.length;
-        });
-
-        if (labels.length > 0) {
-          new Chart(document.getElementById('schoolChart'), {
-            type: 'bar',
-            data: { labels, datasets: [{ label: 'Avg Score by Class', data, backgroundColor: '#16a34a' }] },
-            options: { responsive: true }
-          });
-        }
-      } catch (err) {
-        console.error("Error loading admin data:", err);
-      }
+      const eSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", schoolId)));
+      let examHtml = '';
+      eSnap.forEach(d => {
+        const e = d.data();
+        examHtml += `<div class="border p-2 rounded"><p class="font-medium">${e.examName} - ${e.term} ${e.year}</p><p class="text-xs text-gray-600">Classes: ${e.classes.join(', ')}</p></div>`;
+      });
+      document.getElementById('examList').innerHTML = examHtml || '<p class="text-gray-500 text-sm">No exams created</p>';
     }
-
     function setupAdminEvents() {
-      const createTeacher = httpsCallable(functions, 'createTeacherAccount');
       document.getElementById('addTeacherBtn').onclick = async () => {
         const email = document.getElementById('teacherEmail').value.trim();
         const name = document.getElementById('teacherName').value.trim();
@@ -423,7 +505,7 @@
         const statusEl = document.getElementById('addTeacherStatus');
         const loader = document.getElementById('createLoader');
 
-        if (!email || !name || !pass) {
+        if (!email ||!name ||!pass) {
           statusEl.textContent = "Please fill all fields";
           statusEl.className = "text-sm mt-2 text-red-500";
           return;
@@ -431,10 +513,9 @@
 
         loader.classList.remove('hidden');
         statusEl.textContent = "Creating...";
-        statusEl.className = "text-sm mt-2 text-blue-600";
-
         try {
-          await createTeacher({ email, password: pass, name, schoolId: userSchoolId, role: "teacher" });
+          const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+          await createUserDoc(userCred.user.uid, { uid: userCred.user.uid, email, name, role: "teacher" });
           statusEl.textContent = `Teacher ${name} created successfully`;
           statusEl.className = "text-sm mt-2 text-green-600";
           document.getElementById('teacherEmail').value = '';
@@ -448,9 +529,36 @@
           loader.classList.add('hidden');
         }
       };
+
+      document.getElementById('createExamBtn').onclick = async () => {
+        const examName = document.getElementById('examName').value.trim();
+        const term = document.getElementById('examTerm').value.trim();
+        const year = document.getElementById('examYear').value.trim();
+        const classes = document.getElementById('examClasses').value.split(',').map(c => c.trim()).filter(c => c);
+        const statusEl = document.getElementById('examStatus');
+
+        if (!examName ||!term ||!year || classes.length === 0) {
+          statusEl.textContent = "Fill all fields and add at least one class";
+          statusEl.className = "text-sm mt-2 text-red-500";
+          return;
+        }
+
+        await addDoc(collection(db, "exams"), {
+          examName, term, year: parseInt(year), classes,
+          schoolId: userSchoolId, schoolName: userSchoolName,
+          createdBy: currentUser.uid, createdAt: serverTimestamp()
+        });
+        statusEl.textContent = `Exam ${examName} created`;
+        statusEl.className = "text-sm mt-2 text-green-600";
+        document.getElementById('examName').value = '';
+        document.getElementById('examTerm').value = '';
+        document.getElementById('examYear').value = '';
+        document.getElementById('examClasses').value = '';
+        loadAdminData(userSchoolId);
+      };
     }
 
-    // Super Admin Dashboard
+    // SUPER ADMIN DASHBOARD
     function renderSuperAdminDashboard(container) {
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
@@ -479,27 +587,20 @@
     }
 
     async function loadAllSchools() {
-      try {
-        const schools = await getDocs(collection(db, "schools"));
-        let html = '';
-        for (const s of schools.docs) {
-          const schoolId = s.id;
-          const schoolData = s.data();
-          const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
-          const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
-          html += `
-            <div class="border p-3 mb-2 rounded hover:bg-gray-50">
-              <p class="font-semibold">${schoolData.name || schoolId}</p>
-              <p class="text-sm text-gray-600">School ID: ${schoolId}</p>
-              <p class="text-sm mt-1">Teachers: ${teachers.size} | Learners: ${learners.size}</p>
-            </div>
-          `;
-        }
-        document.getElementById('schoolsOverview').innerHTML = html || '<p class="text-gray-500">No schools found</p>';
-      } catch (err) {
-        document.getElementById('schoolsOverview').innerHTML = '<p class="text-red-500">Error loading schools</p>';
-        console.error(err);
+      const schools = await getDocs(collection(db, "schools"));
+      let html = '';
+      for (const s of schools.docs) {
+        const schoolId = s.id;
+        const schoolData = s.data();
+        const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
+        const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
+        html += `<div class="border p-3 mb-2 rounded hover:bg-gray-50">
+          <p class="font-semibold">${schoolData.name || schoolId}</p>
+          <p class="text-sm text-gray-600">School ID: ${schoolId}</p>
+          <p class="text-sm mt-1">Teachers: ${teachers.size} | Learners: ${learners.size}</p>
+        </div>`;
       }
+      document.getElementById('schoolsOverview').innerHTML = html || '<p class="text-gray-500">No schools found</p>';
     }
 
     function setupSuperAdminEvents() {
@@ -512,24 +613,17 @@
         const statusEl = document.getElementById('addAdminStatus');
         const loader = document.getElementById('adminLoader');
 
-        if (!email || !name || !pass || !schoolId) {
+        if (!email ||!name ||!pass ||!schoolId) {
           statusEl.textContent = "Please fill all fields";
           statusEl.className = "text-sm mt-2 text-red-500";
           return;
         }
 
         loader.classList.remove('hidden');
-        statusEl.textContent = "Creating...";
-        statusEl.className = "text-sm mt-2 text-blue-600";
-
         try {
           await createAdmin({ email, password: pass, name, schoolId, role: "admin" });
           statusEl.textContent = `Admin ${name} created for school ${schoolId}`;
           statusEl.className = "text-sm mt-2 text-green-600";
-          document.getElementById('adminEmail').value = '';
-          document.getElementById('adminName').value = '';
-          document.getElementById('adminPass').value = '';
-          document.getElementById('schoolId').value = '';
           loadAllSchools();
         } catch (err) {
           statusEl.textContent = 'Error: ' + err.message;
