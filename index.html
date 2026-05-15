@@ -19,8 +19,8 @@
 
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
-  .hidden { display: none; }
-  .loader {
+    .hidden { display: none; }
+    .loader {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #2563eb;
       border-radius: 50%;
@@ -131,6 +131,11 @@
         } else {
           userData = { email: user.email, name: user.displayName || 'User' };
         }
+        
+        // Override name display for super admin without touching Firestore
+        if (user.email === "onyangowycliffe81@gmail.com") {
+          userData.name = "Wycliffe Onyango";
+        }
       } catch (err) {
         console.error("Error loading user data:", err);
         document.getElementById('authError').textContent = "Failed to load user data";
@@ -186,15 +191,13 @@
 
     function renderDashboard() {
       const content = document.getElementById('dashboardContent');
-      if (userRole === 'superadmin') {
-        renderSuperAdminDashboard(content);
-      } else if (userRole === 'admin') {
+      // Fixed: handle both 'super_admin' and 'superadmin'
+      if (userRole === 'super_admin' || userRole === 'superadmin' || userRole === 'admin') {
         renderAdminDashboard(content);
       } else {
         renderTeacherDashboard(content);
       }
     }
-
     function setNoDataState(elementId, message = "No data yet") {
       const el = document.getElementById(elementId);
       if (el && el.innerHTML.includes("Loading")) {
@@ -204,12 +207,13 @@
 
     async function createUserDoc(uid, data) {
       await setDoc(doc(db, "users", uid), {
-      ...data,
+        ...data,
         schoolId: userSchoolId,
         schoolName: userSchoolName,
         createdAt: serverTimestamp()
       });
     }
+
     // TEACHER DASHBOARD
     function renderTeacherDashboard(container) {
       container.innerHTML = `
@@ -261,7 +265,6 @@
       loadTeacherExams();
       setupTeacherEvents();
     }
-
     async function loadTeacherExams() {
       const examSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
       let examOptions = '<option value="">Select Exam</option>';
@@ -281,6 +284,7 @@
       document.getElementById('classSelect').innerHTML = classOptions;
       document.getElementById('analysisClass').innerHTML = classOptions;
     }
+
     function setupTeacherEvents() {
       document.getElementById('picUpload').addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -511,12 +515,27 @@
           return;
         }
 
+        if (!userSchoolId) {
+          statusEl.textContent = "Error: You have no schoolId assigned";
+          statusEl.className = "text-sm mt-2 text-red-500";
+          return;
+        }
+
         loader.classList.remove('hidden');
         statusEl.textContent = "Creating...";
         try {
           const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-          await createUserDoc(userCred.user.uid, { uid: userCred.user.uid, email, name, role: "teacher" });
-          statusEl.textContent = `Teacher ${name} created successfully`;
+          await setDoc(doc(db, "users", userCred.user.uid), {
+            uid: userCred.user.uid,
+            email,
+            name,
+            role: "teacher",
+            schoolId: userSchoolId,
+            schoolName: userSchoolName,
+            createdBy: currentUser.uid,
+            createdAt: serverTimestamp()
+          });
+          statusEl.textContent = `Teacher ${name} created and assigned to ${userSchoolName}`;
           statusEl.className = "text-sm mt-2 text-green-600";
           document.getElementById('teacherEmail').value = '';
           document.getElementById('teacherName').value = '';
