@@ -3,26 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rayien Analytics Dashboard</title>
-
-  <!-- PWA Setup -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
-    }
-  </script>
-
-  <!-- Tailwind CSS -->
+  <title>Rayien Analytics</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    .hidden { display: none; }
-    .loader {
+.loader {
       border: 3px solid #f3f3f3;
-      border-top: 3px solid #2563eb;
+      border-top: 3px solid #3498db;
       border-radius: 50%;
       width: 20px;
       height: 20px;
@@ -32,59 +20,68 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.hidden { display: none; }
   </style>
 </head>
 <body class="bg-gray-100">
-
   <div id="app" class="min-h-screen">
-
     <!-- Auth Section -->
-    <div id="authSection" class="flex items-center justify-center min-h-screen px-4">
-      <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-4 text-center">Rayien Analytics</h2>
-        <input id="email" type="email" placeholder="Email" class="border p-2 w-full mb-3 rounded">
-        <input id="password" type="password" placeholder="Password" class="border p-2 w-full mb-3 rounded">
-        <button id="loginBtn" class="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700 flex items-center justify-center gap-2">
-          <span id="loginText">Login</span>
-          <div id="loginLoader" class="loader hidden"></div>
-        </button>
-        <p id="authError" class="text-red-500 text-sm mt-2"></p>
+    <div id="authSection" class="flex items-center justify-center min-h-screen">
+      <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <h1 class="text-2xl font-bold text-center mb-6">Rayien Analytics</h1>
+        <div class="space-y-4">
+          <input id="email" type="email" placeholder="Email" class="w-full border p-3 rounded">
+          <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded">
+          <button id="loginBtn" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 flex items-center justify-center gap-2">
+            <span id="loginText">Login</span>
+            <div id="loginLoader" class="loader hidden"></div>
+          </button>
+          <p id="authError" class="text-red-500 text-sm text-center"></p>
+        </div>
       </div>
     </div>
 
     <!-- Dashboard Section -->
     <div id="dashboardSection" class="hidden">
-      <header class="bg-white shadow mb-4">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 class="text-xl font-bold">Dashboard</h1>
-          <div class="flex items-center gap-3">
-            <span id="userInfo" class="text-sm text-gray-600"></span>
-            <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
-          </div>
+      <header class="bg-white shadow p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold">Dashboard</h1>
+        <div class="flex items-center gap-4">
+          <span id="userInfo" class="text-sm"></span>
+          <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
         </div>
       </header>
-
-      <main id="dashboardContent" class="max-w-7xl mx-auto px-4 pb-6"></main>
+      <main id="dashboardContent" class="p-4 max-w-7xl mx-auto">
+        <!-- Dynamic content loads here -->
+      </main>
     </div>
-
   </div>
 
   <script type="module">
-    console.log("JS is running");
-
-    // Firebase SDK imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
-    import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      getDocs,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      collection,
+      query,
+      where,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // Firebase Config
     const firebaseConfig = {
-      apiKey: "AIzaSyAuiX3gWu0GCw-9m4P-Cc3ktpnPK8AEfXw",
+      apiKey: "AIzaSyAuiX3gWu0GCw-9m4P-Cc3ktpPK8AEfXw",
       authDomain: "rayien-analytics.firebaseapp.com",
       projectId: "rayien-analytics",
       storageBucket: "rayien-analytics.appspot.com",
@@ -96,8 +93,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app);
-    const functions = getFunctions(app);
 
     // Global variables
     let currentUser = null;
@@ -105,57 +100,25 @@
     let userRole = null;
     let userSchoolId = null;
     let userSchoolName = null;
+    let userId = null;
+
     // Auth state listener
     onAuthStateChanged(auth, async (user) => {
-      console.log("Auth state:", user);
       if (user) {
         currentUser = user;
-        await loadUserData(user);
+        userId = user.email.replace(/\./g, '_');
+        await loadUserData(userId);
         showDashboard();
       } else {
+        currentUser = null;
+        userData = null;
+        userId = null;
         showAuth();
       }
     });
 
-    async function loadUserData(user) {
-      try {
-        const tokenResult = await user.getIdTokenResult(true);
-        userRole = tokenResult.claims.role || 'teacher';
-        userSchoolId = tokenResult.claims.schoolId || null;
-
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          userData = userDoc.data();
-          userSchoolId = userData.schoolId || userSchoolId;
-          userSchoolName = userData.schoolName || userSchoolName;
-        } else {
-          userData = { email: user.email, name: user.displayName || 'User' };
-        }
-        
-        // Override name display for super admin without touching Firestore
-        if (user.email === "onyangowycliffe81@gmail.com") {
-          userData.name = "Wycliffe Onyango";
-        }
-      } catch (err) {
-        console.error("Error loading user data:", err);
-        document.getElementById('authError').textContent = "Failed to load user data";
-      }
-    }
-
-    function showAuth() {
-      document.getElementById('authSection').classList.remove('hidden');
-      document.getElementById('dashboardSection').classList.add('hidden');
-    }
-
-    function showDashboard() {
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('dashboardSection').classList.remove('hidden');
-      document.getElementById('userInfo').textContent = `${userData.name || userData.email} (${userRole})`;
-      document.querySelector('header h1').textContent = userSchoolName || 'Dashboard';
-      renderDashboard();
-    }
-
-    document.getElementById('loginBtn').addEventListener('click', async () => {
+    // Auth handlers
+    document.getElementById('loginBtn').onclick = async () => {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const errorEl = document.getElementById('authError');
@@ -174,44 +137,66 @@
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (err) {
-        errorEl.textContent = err.message;
+        errorEl.textContent = "Login failed: " + err.message;
+      } finally {
         loader.classList.add('hidden');
         loginText.textContent = "Login";
       }
-    });
+    };
 
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
+    document.getElementById('logoutBtn').onclick = async () => {
       await signOut(auth);
-      currentUser = null;
-      userData = null;
-      userRole = null;
-      userSchoolId = null;
-      userSchoolName = null;
-    });
+    };
+
+    async function loadUserData(uid) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        userData = userDoc.data();
+        userRole = userData.role;
+        userSchoolId = userData.schoolId;
+        userSchoolName = userData.schoolName;
+      } else {
+        userData = {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          name: currentUser.displayName || currentUser.email.split('@')[0],
+          role: "teacher",
+          schoolId: null,
+          schoolName: null,
+          assignedClasses: [],
+          assignedSubjects: [],
+          createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, "users", uid), userData);
+      }
+    }
+
+    function showAuth() {
+      document.getElementById('authSection').classList.remove('hidden');
+      document.getElementById('dashboardSection').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('dashboardSection').classList.remove('hidden');
+
+      document.getElementById('userInfo').textContent =
+        `${userData.name} | ${userRole || 'teacher'} | ${userSchoolName || 'No School'}`;
+
+      renderDashboard();
+    }
 
     function renderDashboard() {
       const content = document.getElementById('dashboardContent');
-      // Fixed: handle both 'super_admin' and 'superadmin'
-      if (userRole === 'super_admin' || userRole === 'superadmin' || userRole === 'admin') {
+      const isSuperAdmin = userRole === 'super_admin' ||
+                          userRole === 'superadmin' ||
+                          currentUser.email === 'onyangowycliffe@gmail.com';
+
+      if (isSuperAdmin || userRole === 'admin') {
         renderAdminDashboard(content);
       } else {
         renderTeacherDashboard(content);
       }
-    }
-    function setNoDataState(elementId, message = "No data yet") {
-      const el = document.getElementById(elementId);
-      if (el && el.innerHTML.includes("Loading")) {
-        el.innerHTML = `<p class="text-gray-500">${message}</p>`;
-      }
-    }
-
-    async function createUserDoc(uid, data) {
-      await setDoc(doc(db, "users", uid), {
-        ...data,
-        schoolId: userSchoolId,
-        schoolName: userSchoolName,
-        createdAt: serverTimestamp()
-      });
     }
 
     // TEACHER DASHBOARD
@@ -222,7 +207,9 @@
           <div class="flex-1">
             <p class="font-semibold">${userData.name}</p>
             <p class="text-sm text-gray-600">${userData.email}</p>
-            <input type="file" id="picUpload" accept="image/*" class="mt-2 text-sm">
+            <p class="text-xs text-gray-500">${userSchoolName || 'No School Assigned'}</p>
+            <input type="file" id="picUpload" accept="image/*" class="mt-2 text-sm" disabled title="Profile picture upload requires Firebase Storage upgrade">
+            <p class="text-xs text-gray-400 mt-1">Profile upload disabled on Spark plan</p>
           </div>
         </div>
 
@@ -231,14 +218,10 @@
           <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
             <select id="examSelect" class="border p-2 rounded"><option>Loading exams...</option></select>
             <select id="classSelect" class="border p-2 rounded"><option>Select Class</option></select>
-            <input id="subjectInput" type="text" placeholder="Subject e.g. Math" class="border p-2 rounded">
+            <select id="subjectSelect" class="border p-2 rounded"><option>Select Subject</option></select>
             <button id="loadStudentsBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Load Students</button>
           </div>
           <div id="marksTable" class="overflow-x-auto"></div>
-          <div class="mt-3 flex gap-2">
-            <button id="saveMarksBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 hidden">Save Marks</button>
-            <p id="marksStatus" class="text-sm"></p>
-          </div>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
@@ -262,395 +245,678 @@
         </div>
       `;
 
-      loadTeacherExams();
+      loadTeacherAssignedData();
       setupTeacherEvents();
     }
-    async function loadTeacherExams() {
+
+    async function loadTeacherAssignedData() {
+      const assignedClasses = userData.assignedClasses || [];
+      const assignedSubjects = userData.assignedSubjects || [];
+
       const examSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
       let examOptions = '<option value="">Select Exam</option>';
-      let classes = new Set();
-
       examSnap.forEach(d => {
         const e = d.data();
         examOptions += `<option value="${d.id}">${e.examName} - ${e.term} ${e.year}</option>`;
-        e.classes.forEach(c => classes.add(c));
       });
-
       document.getElementById('examSelect').innerHTML = examOptions;
       document.getElementById('analysisExam').innerHTML = examOptions;
 
       let classOptions = '<option value="">Select Class</option>';
-      classes.forEach(c => classOptions += `<option value="${c}">${c}</option>`);
+      assignedClasses.forEach(c => classOptions += `<option value="${c}">${c}</option>`);
       document.getElementById('classSelect').innerHTML = classOptions;
       document.getElementById('analysisClass').innerHTML = classOptions;
+
+      let subjectOptions = '<option value="">Select Subject</option>';
+      assignedSubjects.forEach(s => subjectOptions += `<option value="${s}">${s}</option>`);
+      document.getElementById('subjectSelect').innerHTML = subjectOptions;
     }
 
     function setupTeacherEvents() {
-      document.getElementById('picUpload').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const storageRef = ref(storage, `profilePics/${currentUser.uid}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        await updateDoc(doc(db, "users", currentUser.uid), { photoURL: url });
-        document.getElementById('profilePic').src = url;
-        alert('Profile picture updated');
-      });
-
-      document.getElementById('loadStudentsBtn').addEventListener('click', async () => {
+      document.getElementById('loadStudentsBtn').onclick = async () => {
         const examId = document.getElementById('examSelect').value;
-        const className = document.getElementById('classSelect').value;
-        const subject = document.getElementById('subjectInput').value.trim();
+        const cls = document.getElementById('classSelect').value;
+        const subject = document.getElementById('subjectSelect').value;
 
-        if (!examId ||!className ||!subject) {
-          alert('Select exam, class and subject');
+        if (!examId ||!cls ||!subject) {
+          alert("Select exam, class, and subject");
           return;
         }
 
-        const learnerSnap = await getDocs(query(collection(db, "learners"),
+        const learnerSnap = await getDocs(query(
+          collection(db, "learners"),
           where("schoolId", "==", userSchoolId),
-          where("class", "==", className)
+          where("class", "==", cls)
         ));
 
-        let table = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Adm No</th><th class="text-left p-2">Name</th><th class="text-left p-2">Marks</th></tr></thead><tbody>';
-        learnerSnap.forEach(d => {
-          const l = d.data();
-          table += `<tr class="border-b">
-            <td class="p-2">${l.admissionNo}</td>
-            <td class="p-2">${l.name}</td>
-            <td class="p-2"><input type="number" min="0" max="100" data-adm="${l.admissionNo}" data-name="${l.name}" class="markInput border p-1 w-20 rounded"></td>
-          </tr>`;
-        });
-        table += '</tbody></table>';
-
-        document.getElementById('marksTable').innerHTML = table || '<p class="text-gray-500">No students in this class</p>';
-        document.getElementById('saveMarksBtn').classList.toggle('hidden', learnerSnap.empty);
-        document.getElementById('saveMarksBtn').onclick = () => saveMarks(examId, className, subject);
-      });
-
-      async function saveMarks(examId, className, subject) {
-        const inputs = document.querySelectorAll('.markInput');
-        const batch = writeBatch(db);
-        let count = 0;
-
-        inputs.forEach(input => {
-          const score = parseFloat(input.value);
-          if (!isNaN(score)) {
-            const docRef = doc(collection(db, "results"));
-            batch.set(docRef, {
-              examId, class: className, subject,
-              admissionNo: input.dataset.adm,
-              studentName: input.dataset.name,
-              score,
-              schoolId: userSchoolId,
-              enteredBy: currentUser.uid,
-              createdAt: serverTimestamp()
-            });
-            count++;
-          }
-        });
-
-        if (count === 0) {
-          alert('Enter at least one mark');
+        if (learnerSnap.empty) {
+          document.getElementById('marksTable').innerHTML = "<p class='text-gray-500'>No learners found for this class</p>";
           return;
         }
 
-        await batch.commit();
-        document.getElementById('marksStatus').textContent = `${count} marks saved`;
-        document.getElementById('marksStatus').className = 'text-sm text-green-600';
-      }
-
-      document.getElementById('analyzeBtn').addEventListener('click', async () => {
-        const examId = document.getElementById('analysisExam').value;
-        const className = document.getElementById('analysisClass').value;
-        if (!examId ||!className) return;
-
-        const snap = await getDocs(query(collection(db, "results"),
+        const existingResults = {};
+        const resultsSnap = await getDocs(query(
+          collection(db, "results"),
           where("schoolId", "==", userSchoolId),
           where("examId", "==", examId),
-          where("class", "==", className)
+          where("class", "==", cls),
+          where("subject", "==", subject)
         ));
-
-        const studentScores = {};
-        snap.forEach(d => {
-          const r = d.data();
-          if (!studentScores[r.admissionNo]) {
-            studentScores[r.admissionNo] = { name: r.studentName, total: 0, count: 0 };
-          }
-          studentScores[r.admissionNo].total += r.score;
-          studentScores[r.admissionNo].count++;
+        resultsSnap.forEach(d => {
+          existingResults[d.data().learnerId] = { id: d.id, marks: d.data().marks };
         });
 
-        let table = '<table class="w-full text-sm"><thead><tr class="border-b"><th class="text-left p-2">Adm No</th><th class="text-left p-2">Name</th><th class="text-left p-2">Avg Score</th></tr></thead><tbody>';
-        const chartLabels = [];
-        const chartData = [];
+        let html = `<table class="w-full text-sm border">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="border p-2">Admission No</th>
+              <th class="border p-2">Name</th>
+              <th class="border p-2">Marks</th>
+              <th class="border p-2">Action</th>
+            </tr>
+          </thead><tbody>`;
 
-        Object.entries(studentScores).forEach(([adm, data]) => {
-          const avg = (data.total / data.count).toFixed(1);
-          table += `<tr class="border-b"><td class="p-2">${adm}</td><td class="p-2">${data.name}</td><td class="p-2">${avg}%</td></tr>`;
-          chartLabels.push(data.name);
-          chartData.push(avg);
+        learnerSnap.forEach(d => {
+          const l = d.data();
+          const existing = existingResults[d.id];
+          const markVal = existing? existing.marks : '';
+          const btnText = existing? 'Update' : 'Save';
+          const btnColor = existing? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700';
+
+          html += `<tr data-learner-id="${d.id}" data-result-id="${existing? existing.id : ''}">
+            <td class="border p-2">${l.admissionNo || ''}</td>
+            <td class="border p-2">${l.name}</td>
+            <td class="border p-2">
+              <input type="number" class="markInput border p-1 w-20" min="0" max="100" value="${markVal}">
+            </td>
+            <td class="border p-2 space-x-1">
+              <button class="saveMarkBtn ${btnColor} text-white px-2 py-1 rounded text-xs">${btnText}</button>
+              ${existing? `<button class="deleteMarkBtn bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Delete</button>` : ''}
+            </td>
+          </tr>`;
         });
-        table += '</tbody></table>';
 
-        document.getElementById('analysisTable').innerHTML = table || '<p class="text-gray-500">No results found</p>';
+        html += '</tbody></table>';
+        document.getElementById('marksTable').innerHTML = html;
 
-        if (chartLabels.length > 0) {
-          new Chart(document.getElementById('analysisChart'), {
-            type: 'bar',
-            data: { labels: chartLabels, datasets: [{ label: 'Average Score %', data: chartData, backgroundColor: '#9333ea' }] },
-            options: { responsive: true }
-          });
+        document.querySelectorAll('.saveMarkBtn').forEach(btn => {
+          btn.onclick = async (e) => {
+            const row = e.target.closest('tr');
+            const learnerId = row.dataset.learnerId;
+            const resultId = row.dataset.resultId;
+            const marks = row.querySelector('.markInput').value;
+            const learner = learnerSnap.docs.find(d => d.id === learnerId).data();
+
+            if (marks === '') {
+              alert('Enter marks');
+              return;
+            }
+
+            const data = {
+              learnerId,
+              learnerName: learner.name,
+              admissionNo: learner.admissionNo,
+              examId, class: cls, subject,
+              marks: parseFloat(marks),
+              schoolId: userSchoolId,
+              teacherId: userId,
+              updatedAt: serverTimestamp()
+            };
+
+            if (resultId) {
+              await updateDoc(doc(db, "results", resultId), data);
+              alert('Marks updated');
+            } else {
+              const newDoc = await addDoc(collection(db, "results"), {
+           ...data,
+                createdAt: serverTimestamp()
+              });
+              row.dataset.resultId = newDoc.id;
+              e.target.textContent = 'Update';
+              e.target.className = 'saveMarkBtn bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs';
+              e.target.insertAdjacentHTML('afterend',
+                `<button class="deleteMarkBtn bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Delete</button>`
+              );
+              attachDeleteHandler(row.querySelector('.deleteMarkBtn'));
+              alert('Marks saved');
+            }
+          };
+        });
+
+        function attachDeleteHandler(btn) {
+          btn.onclick = async (e) => {
+            if (!confirm('Delete this mark?')) return;
+            const row = e.target.closest('tr');
+            const resultId = row.dataset.resultId;
+            await deleteDoc(doc(db, "results", resultId));
+            row.querySelector('.markInput').value = '';
+            row.dataset.resultId = '';
+            e.target.remove();
+            e.target.previousElementSibling.textContent = 'Save';
+            e.target.previousElementSibling.className = 'saveMarkBtn bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs';
+            alert('Mark deleted');
+          };
         }
-      });
 
-      document.getElementById('searchLearner').addEventListener('click', async () => {
+        document.querySelectorAll('.deleteMarkBtn').forEach(attachDeleteHandler);
+      };
+
+      document.getElementById('searchLearner').onclick = async () => {
         const admNo = document.getElementById('admissionInput').value.trim();
         if (!admNo) return;
-        const q = query(collection(db, "learners"), where("admissionNo", "==", admNo), where("schoolId", "==", userSchoolId));
+
+        const q = query(collection(db, "learners"),
+          where("schoolId", "==", userSchoolId),
+          where("admissionNo", "==", admNo)
+        );
         const snap = await getDocs(q);
+
         if (snap.empty) {
-          document.getElementById('learnerResult').innerHTML = '<p class="text-gray-500">Learner not found</p>';
+          document.getElementById('learnerResult').innerHTML = "<p class='text-red-500'>Learner not found</p>";
           return;
         }
+
         const learner = snap.docs[0].data();
         document.getElementById('learnerResult').innerHTML = `
-          <div class="border p-3 rounded">
-            <img src="${learner.photoURL || 'https://via.placeholder.com/80'}" class="w-20 h-20 rounded-full mb-2">
-            <p><b>Name:</b> ${learner.name}</p>
-            <p><b>Admission No:</b> ${learner.admissionNo}</p>
-            <p><b>Class:</b> ${learner.class}</p>
+          <div class="border p-3 rounded bg-gray-50">
+            <p><strong>Name:</strong> ${learner.name}</p>
+            <p><strong>Admission No:</strong> ${learner.admissionNo}</p>
+            <p><strong>Class:</strong> ${learner.class}</p>
+            <p><strong>Stream:</strong> ${learner.stream || '-'}</p>
           </div>
         `;
-      });
+      };
+
+      document.getElementById('analyzeBtn').onclick = async () => {
+        const examId = document.getElementById('analysisExam').value;
+        const cls = document.getElementById('analysisClass').value;
+
+        if (!examId ||!cls) {
+          alert("Select exam and class");
+          return;
+        }
+
+        const resultsSnap = await getDocs(query(
+          collection(db, "results"),
+          where("schoolId", "==", userSchoolId),
+          where("examId", "==", examId),
+          where("class", "==", cls)
+        ));
+
+        if (resultsSnap.empty) {
+          document.getElementById('analysisTable').innerHTML = "<p class='text-gray-500'>No results found</p>";
+          return;
+        }
+
+        const subjectTotals = {};
+        const subjectCount = {};
+
+        resultsSnap.forEach(d => {
+          const r = d.data();
+          subjectTotals[r.subject] = (subjectTotals[r.subject] || 0) + r.marks;
+          subjectCount[r.subject] = (subjectCount[r.subject] || 0) + 1;
+        });
+
+        let html = `<table class="w-full text-sm border">
+          <thead class="bg-gray-200">
+            <tr><th class="border p-2">Subject</th><th class="border p-2">Average</th><th class="border p-2">Students</th></tr>
+          </thead><tbody>`;
+
+        const labels = [];
+        const data = [];
+
+        Object.keys(subjectTotals).forEach(sub => {
+          const avg = (subjectTotals[sub] / subjectCount[sub]).toFixed(1);
+          html += `<tr><td class="border p-2">${sub}</td><td class="border p-2">${avg}</td><td class="border p-2">${subjectCount[sub]}</td></tr>`;
+          labels.push(sub);
+          data.push(avg);
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('analysisTable').innerHTML = html;
+
+        const ctx = document.getElementById('analysisChart');
+        if (window.analysisChart) window.analysisChart.destroy();
+        window.analysisChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Average Marks',
+              data: data,
+              backgroundColor: 'rgba(59, 130, 246, 0.6)'
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 100 } }
+          }
+        });
+      };
     }
+
     // ADMIN DASHBOARD
     function renderAdminDashboard(container) {
+      const isSuperAdmin = userRole === 'super_admin' ||
+                          userRole === 'superadmin' ||
+                          currentUser.email === 'onyangowycliffe@gmail.com';
+
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Add Teacher</h3>
-          <input id="teacherEmail" type="email" placeholder="Email" class="border p-2 w-full mb-2 rounded">
-          <input id="teacherName" type="text" placeholder="Full Name" class="border p-2 w-full mb-2 rounded">
-          <input id="teacherPass" type="password" placeholder="Password" class="border p-2 w-full mb-2 rounded">
-          <button id="addTeacherBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
-            <span>Create Teacher</span>
-            <div id="createLoader" class="loader hidden"></div>
-          </button>
-          <p id="addTeacherStatus" class="text-sm mt-2"></p>
+          <h2 class="text-lg font-bold mb-2">${userSchoolName || 'Super Admin Panel'}</h2>
+          <p class="text-sm text-gray-600">Role: ${isSuperAdmin? 'Super Admin' : 'Admin'}</p>
+        </div>
+
+        ${isSuperAdmin? `
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Add New School</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input id="schoolName" type="text" placeholder="School Name" class="border p-2 rounded">
+            <input id="schoolEmail" type="email" placeholder="Admin Email" class="border p-2 rounded">
+            <button id="addSchoolBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add School</button>
+          </div>
+          <p id="schoolStatus" class="text-sm mt-2"></p>
+        </div>
+        ` : ''}
+
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Add Learner</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input id="learnerName" type="text" placeholder="Learner Name" class="border p-2 rounded">
+            <input id="admissionNo" type="text" placeholder="Admission No" class="border p-2 rounded">
+            <input id="learnerClass" type="text" placeholder="Class e.g Form 1" class="border p-2 rounded">
+            <input id="learnerStream" type="text" placeholder="Stream e.g A" class="border p-2 rounded">
+          </div>
+          <button id="saveLearnerBtn" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">Save Learner</button>
+          <p id="learnerStatus" class="text-sm mt-2"></p>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Create Exam</h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-            <input id="examName" type="text" placeholder="Exam Name e.g. Mid Term" class="border p-2 rounded">
-            <input id="examTerm" type="text" placeholder="Term e.g. Term 2" class="border p-2 rounded">
-            <input id="examYear" type="number" placeholder="Year e.g. 2025" class="border p-2 rounded">
+          <h3 class="font-semibold mb-3">Add Class/Stream/Subject</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input id="newClass" type="text" placeholder="Class e.g Form 3" class="border p-2 rounded">
+            <input id="newStream" type="text" placeholder="Stream e.g B" class="border p-2 rounded">
+            <input id="newSubject" type="text" placeholder="Subject e.g Physics" class="border p-2 rounded">
           </div>
-          <input id="examClasses" type="text" placeholder="Classes/Streams: Form1A,Form1B,Form2A" class="border p-2 w-full mb-2 rounded">
-          <button id="createExamBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Create Exam</button>
-          <p id="examStatus" class="text-sm mt-2"></p>
-          <div id="examList" class="mt-3 space-y-2">Loading...</div>
+          <div class="flex gap-2 mt-3">
+            <button id="addClassBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Class</button>
+            <button id="addSubjectBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Subject</button>
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div class="bg-white p-4 rounded-lg shadow">
-            <h3 class="font-semibold mb-3">All Teachers</h3>
-            <div id="teacherList" class="space-y-2 max-h-64 overflow-y-auto">Loading...</div>
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">Assign Teacher</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input id="teacherEmail" type="email" placeholder="Teacher Email" class="border p-2 rounded">
+            <input id="assignClass" type="text" placeholder="Class" class="border p-2 rounded">
+            <input id="assignSubject" type="text" placeholder="Subject" class="border p-2 rounded">
           </div>
-          <div class="bg-white p-4 rounded-lg shadow">
-            <h3 class="font-semibold mb-3">All Learners</h3>
-            <div id="learnerList" class="space-y-2 max-h-64 overflow-y-auto">Loading...</div>
+          <button id="assignTeacherBtn" class="bg-purple-600 text-white px-4 py-2 rounded mt-3 hover:bg-purple-700">Assign</button>
+          <p id="assignStatus" class="text-sm mt-2"></p>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+          <h3 class="font-semibold mb-3">View Results</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+            <select id="adminExamSelect" class="border p-2 rounded"><option>Select Exam</option></select>
+            <select id="adminClassSelect" class="border p-2 rounded"><option>All Classes</option></select>
+            <select id="adminSubjectSelect" class="border p-2 rounded"><option>All Subjects</option></select>
           </div>
+          <div class="flex gap-2 mt-3">
+            <button id="loadResultsBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Load Results</button>
+            <button id="exportCsvBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Download CSV</button>
+          </div>
+          <div id="adminResultsTable" class="overflow-x-auto mt-3"></div>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="font-semibold mb-3">School Results Overview</h3>
-          <canvas id="schoolChart"></canvas>
+          <h3 class="font-semibold mb-3">School Overview</h3>
+          <div id="overviewStats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-blue-50 p-3 rounded"><p class="text-sm">Learners</p><p id="countLearners" class="text-2xl font-bold">0</p></div>
+            <div class="bg-green-50 p-3 rounded"><p class="text-sm">Teachers</p><p id="countTeachers" class="text-2xl font-bold">0</p></div>
+            <div class="bg-yellow-50 p-3 rounded"><p class="text-sm">Classes</p><p id="countClasses" class="text-2xl font-bold">0</p></div>
+            <div class="bg-purple-50 p-3 rounded"><p class="text-sm">Subjects</p><p id="countSubjects" class="text-2xl font-bold">0</p></div>
+          </div>
         </div>
       `;
 
-      loadAdminData(userSchoolId);
       setupAdminEvents();
+      addExamCreation();
+      loadOverviewStats();
+      loadAdminResultsView();
     }
 
-    async function loadAdminData(schoolId) {
-      const tSnap = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
-      let teacherHtml = '';
-      tSnap.forEach(d => {
-        const t = d.data();
-        teacherHtml += `<div class="border p-2 rounded flex items-center gap-2">
-          <img src="${t.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full">
-          <div><p class="font-medium text-sm">${t.name}</p><p class="text-xs text-gray-600">${t.email}</p></div>
-        </div>`;
-      });
-      document.getElementById('teacherList').innerHTML = teacherHtml || '<p class="text-gray-500 text-sm">No teachers</p>';
-
-      const lSnap = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
-      let learnerHtml = '';
-      lSnap.forEach(d => {
-        const l = d.data();
-        learnerHtml += `<div class="border p-2 rounded"><p class="font-medium text-sm">${l.name}</p><p class="text-xs text-gray-600">Adm: ${l.admissionNo} | Class: ${l.class}</p></div>`;
-      });
-      document.getElementById('learnerList').innerHTML = learnerHtml || '<p class="text-gray-500 text-sm">No learners</p>';
-
-      const eSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", schoolId)));
-      let examHtml = '';
-      eSnap.forEach(d => {
-        const e = d.data();
-        examHtml += `<div class="border p-2 rounded"><p class="font-medium">${e.examName} - ${e.term} ${e.year}</p><p class="text-xs text-gray-600">Classes: ${e.classes.join(', ')}</p></div>`;
-      });
-      document.getElementById('examList').innerHTML = examHtml || '<p class="text-gray-500 text-sm">No exams created</p>';
-    }
     function setupAdminEvents() {
-      document.getElementById('addTeacherBtn').onclick = async () => {
-        const email = document.getElementById('teacherEmail').value.trim();
-        const name = document.getElementById('teacherName').value.trim();
-        const pass = document.getElementById('teacherPass').value;
-        const statusEl = document.getElementById('addTeacherStatus');
-        const loader = document.getElementById('createLoader');
+      const isSuperAdmin = userRole === 'super_admin' ||
+                          userRole === 'superadmin' ||
+                          currentUser.email === 'onyangowycliffe@gmail.com';
 
-        if (!email ||!name ||!pass) {
-          statusEl.textContent = "Please fill all fields";
-          statusEl.className = "text-sm mt-2 text-red-500";
-          return;
-        }
+      if (isSuperAdmin) {
+        document.getElementById('addSchoolBtn').onclick = async () => {
+          const name = document.getElementById('schoolName').value.trim();
+          const email = document.getElementById('schoolEmail').value.trim();
+          const status = document.getElementById('schoolStatus');
 
-        if (!userSchoolId) {
-          statusEl.textContent = "Error: You have no schoolId assigned";
-          statusEl.className = "text-sm mt-2 text-red-500";
-          return;
-        }
+          if (!name ||!email) {
+            status.textContent = "Fill all fields";
+            status.className = "text-sm text-red-600";
+            return;
+          }
 
-        loader.classList.remove('hidden');
-        statusEl.textContent = "Creating...";
-        try {
-          const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-          await setDoc(doc(db, "users", userCred.user.uid), {
-            uid: userCred.user.uid,
-            email,
-            name,
-            role: "teacher",
-            schoolId: userSchoolId,
-            schoolName: userSchoolName,
-            createdBy: currentUser.uid,
+          const schoolId = 'SCH_' + Date.now();
+          await setDoc(doc(db, "schools", schoolId), {
+            name, email, schoolId,
+            createdAt: serverTimestamp(),
+            createdBy: currentUser.email
+          });
+
+          await setDoc(doc(db, "users", email.replace(/\./g, '_')), {
+            email, name: name + " Admin", role: "admin",
+            schoolId, schoolName: name,
             createdAt: serverTimestamp()
           });
-          statusEl.textContent = `Teacher ${name} created and assigned to ${userSchoolName}`;
-          statusEl.className = "text-sm mt-2 text-green-600";
-          document.getElementById('teacherEmail').value = '';
-          document.getElementById('teacherName').value = '';
-          document.getElementById('teacherPass').value = '';
-          loadAdminData(userSchoolId);
-        } catch (err) {
-          statusEl.textContent = 'Error: ' + err.message;
-          statusEl.className = "text-sm mt-2 text-red-500";
-        } finally {
-          loader.classList.add('hidden');
-        }
-      };
 
-      document.getElementById('createExamBtn').onclick = async () => {
-        const examName = document.getElementById('examName').value.trim();
-        const term = document.getElementById('examTerm').value.trim();
-        const year = document.getElementById('examYear').value.trim();
-        const classes = document.getElementById('examClasses').value.split(',').map(c => c.trim()).filter(c => c);
-        const statusEl = document.getElementById('examStatus');
-
-        if (!examName ||!term ||!year || classes.length === 0) {
-          statusEl.textContent = "Fill all fields and add at least one class";
-          statusEl.className = "text-sm mt-2 text-red-500";
-          return;
-        }
-
-        await addDoc(collection(db, "exams"), {
-          examName, term, year: parseInt(year), classes,
-          schoolId: userSchoolId, schoolName: userSchoolName,
-          createdBy: currentUser.uid, createdAt: serverTimestamp()
-        });
-        statusEl.textContent = `Exam ${examName} created`;
-        statusEl.className = "text-sm mt-2 text-green-600";
-        document.getElementById('examName').value = '';
-        document.getElementById('examTerm').value = '';
-        document.getElementById('examYear').value = '';
-        document.getElementById('examClasses').value = '';
-        loadAdminData(userSchoolId);
-      };
-    }
-
-    // SUPER ADMIN DASHBOARD
-    function renderSuperAdminDashboard(container) {
-      container.innerHTML = `
-        <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Create School Admin</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <input id="adminEmail" type="email" placeholder="Email" class="border p-2 rounded">
-            <input id="adminName" type="text" placeholder="Full Name" class="border p-2 rounded">
-            <input id="adminPass" type="password" placeholder="Password" class="border p-2 rounded">
-            <input id="schoolId" type="text" placeholder="School ID" class="border p-2 rounded">
-          </div>
-          <button id="addAdminBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-3 flex items-center gap-2">
-            <span>Create Admin</span>
-            <div id="adminLoader" class="loader hidden"></div>
-          </button>
-          <p id="addAdminStatus" class="text-sm mt-2"></p>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="font-semibold mb-3">All Schools Overview</h3>
-          <div id="schoolsOverview">Loading...</div>
-        </div>
-      `;
-
-      loadAllSchools();
-      setupSuperAdminEvents();
-    }
-
-    async function loadAllSchools() {
-      const schools = await getDocs(collection(db, "schools"));
-      let html = '';
-      for (const s of schools.docs) {
-        const schoolId = s.id;
-        const schoolData = s.data();
-        const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", schoolId), where("role", "==", "teacher")));
-        const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", schoolId)));
-        html += `<div class="border p-3 mb-2 rounded hover:bg-gray-50">
-          <p class="font-semibold">${schoolData.name || schoolId}</p>
-          <p class="text-sm text-gray-600">School ID: ${schoolId}</p>
-          <p class="text-sm mt-1">Teachers: ${teachers.size} | Learners: ${learners.size}</p>
-        </div>`;
+          status.textContent = `School ${name} created. Admin: ${email}`;
+          status.className = "text-sm text-green-600";
+        };
       }
-      document.getElementById('schoolsOverview').innerHTML = html || '<p class="text-gray-500">No schools found</p>';
-    }
 
-    function setupSuperAdminEvents() {
-      const createAdmin = httpsCallable(functions, 'createAdminAccount');
-      document.getElementById('addAdminBtn').onclick = async () => {
-        const email = document.getElementById('adminEmail').value.trim();
-        const name = document.getElementById('adminName').value.trim();
-        const pass = document.getElementById('adminPass').value;
-        const schoolId = document.getElementById('schoolId').value.trim();
-        const statusEl = document.getElementById('addAdminStatus');
-        const loader = document.getElementById('adminLoader');
+      document.getElementById('saveLearnerBtn').onclick = async () => {
+        const name = document.getElementById('learnerName').value.trim();
+        const admNo = document.getElementById('admissionNo').value.trim();
+        const cls = document.getElementById('learnerClass').value.trim();
+        const stream = document.getElementById('learnerStream').value.trim();
+        const status = document.getElementById('learnerStatus');
 
-        if (!email ||!name ||!pass ||!schoolId) {
-          statusEl.textContent = "Please fill all fields";
-          statusEl.className = "text-sm mt-2 text-red-500";
+        if (!name ||!admNo ||!cls) {
+          status.textContent = "Fill name, admission no, and class";
+          status.className = "text-sm text-red-600";
           return;
         }
 
-        loader.classList.remove('hidden');
-        try {
-          await createAdmin({ email, password: pass, name, schoolId, role: "admin" });
-          statusEl.textContent = `Admin ${name} created for school ${schoolId}`;
-          statusEl.className = "text-sm mt-2 text-green-600";
-          loadAllSchools();
-        } catch (err) {
-          statusEl.textContent = 'Error: ' + err.message;
-          statusEl.className = "text-sm mt-2 text-red-500";
-        } finally {
-          loader.classList.add('hidden');
-        }
+        await addDoc(collection(db, "learners"), {
+          name, admissionNo: admNo, class: cls, stream,
+          schoolId: userSchoolId,
+          createdAt: serverTimestamp()
+        });
+
+        status.textContent = "Learner added successfully";
+        status.className = "text-sm text-green-600";
+        document.getElementById('learnerName').value = '';
+        document.getElementById('admissionNo').value = '';
       };
+
+      document.getElementById('addClassBtn').onclick = async () => {
+        const cls = document.getElementById('newClass').value.trim();
+        const stream = document.getElementById('newStream').value.trim();
+        if (!cls) return;
+
+        await addDoc(collection(db, "classes"), {
+          name: cls, stream, schoolId: userSchoolId,
+          createdAt: serverTimestamp()
+        });
+        alert("Class added");
+      };
+
+      document.getElementById('addSubjectBtn').onclick = async () => {
+        const subject = document.getElementById('newSubject').value.trim();
+        if (!subject) return;
+
+        await addDoc(collection(db, "subjects"), {
+          name: subject, schoolId: userSchoolId,
+          createdAt: serverTimestamp()
+        });
+        alert("Subject added");
+      };
+
+      document.getElementById('assignTeacherBtn').onclick = async () => {
+        const email = document.getElementById('teacherEmail').value.trim();
+        const cls = document.getElementById('assignClass').value.trim();
+        const subject = document.getElementById('assignSubject').value.trim();
+        const status = document.getElementById('assignStatus');
+
+        if (!email ||!cls ||!subject) {
+          status.textContent = "Fill all fields";
+          status.className = "text-sm text-red-600";
+          return;
+        }
+
+        const teacherId = email.replace(/\./g, '_');
+        const userDoc = await getDoc(doc(db, "users", teacherId));
+
+        if (!userDoc.exists()) {
+          status.textContent = "Teacher not found. Ask them to login first.";
+          status.className = "text-sm text-red-600";
+          return;
+        }
+
+        const data = userDoc.data();
+        const classes = data.assignedClasses || [];
+        const subjects = data.assignedSubjects || [];
+
+        if (!classes.includes(cls)) classes.push(cls);
+        if (!subjects.includes(subject)) subjects.push(subject);
+
+        await updateDoc(doc(db, "users", teacherId), {
+          assignedClasses: classes,
+          assignedSubjects: subjects,
+          schoolId: userSchoolId,
+          schoolName: userSchoolName,
+          role: "teacher"
+        });
+
+        status.textContent = "Teacher assigned successfully";
+        status.className = "text-sm text-green-600";
+      };
+    }
+
+    async function loadOverviewStats() {
+      const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", userSchoolId)));
+      const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", userSchoolId), where("role", "==", "teacher")));
+      const classes = await getDocs(query(collection(db, "classes"), where("schoolId", "==", userSchoolId)));
+      const subjects = await getDocs(query(collection(db, "subjects"), where("schoolId", "==", userSchoolId)));
+
+      document.getElementById('countLearners').textContent = learners.size;
+      document.getElementById('countTeachers').textContent = teachers.size;
+      document.getElementById('countClasses').textContent = classes.size;
+      document.getElementById('countSubjects').textContent = subjects.size;
+    }
+
+    async function loadAdminResultsView() {
+      const exams = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
+      const classes = await getDocs(query(collection(db, "classes"), where("schoolId", "==", userSchoolId)));
+      const subjects = await getDocs(query(collection(db, "subjects"), where("schoolId", "==", userSchoolId)));
+
+      let examOpts = '<option value="">Select Exam</option>';
+      exams.forEach(d => examOpts += `<option value="${d.id}">${d.data().examName} - ${d.data().term} ${d.data().year}</option>`);
+      document.getElementById('adminExamSelect').innerHTML = examOpts;
+
+      let classOpts = '<option value="">All Classes</option>';
+      classes.forEach(d => classOpts += `<option value="${d.data().name}">${d.data().name}</option>`);
+      document.getElementById('adminClassSelect').innerHTML = classOpts;
+
+      let subjOpts = '<option value="">All Subjects</option>';
+      subjects.forEach(d => subjOpts += `<option value="${d.data().name}">${d.data().name}</option>`);
+      document.getElementById('adminSubjectSelect').innerHTML = subjOpts;
+
+      let lastResultsData = [];
+
+      document.getElementById('loadResultsBtn').onclick = async () => {
+        const examId = document.getElementById('adminExamSelect').value;
+        const cls = document.getElementById('adminClassSelect').value;
+        const subject = document.getElementById('adminSubjectSelect').value;
+
+        let q = query(collection(db, "results"), where("schoolId", "==", userSchoolId));
+        if (examId) q = query(q, where("examId", "==", examId));
+        if (cls) q = query(q, where("class", "==", cls));
+        if (subject) q = query(q, where("subject", "==", subject));
+
+        const snap = await getDocs(q);
+
+        lastResultsData = [];
+        snap.forEach(d => lastResultsData.push({ id: d.id,...d.data() }));
+
+        if (snap.empty) {
+          document.getElementById('adminResultsTable').innerHTML = "<p>No results found</p>";
+          return;
+        }
+
+        let html = `<table class="w-full text-sm border">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="border p-2">Admission</th>
+              <th class="border p-2">Name</th>
+              <th class="border p-2">Class</th>
+              <th class="border p-2">Subject</th>
+              <th class="border p-2">Marks</th>
+              <th class="border p-2">Teacher</th>
+              <th class="border p-2">Action</th>
+            </tr>
+          </thead><tbody>`;
+
+        snap.forEach(d => {
+          const r = d.data();
+          html += `<tr data-id="${d.id}">
+            <td class="border p-2">${r.admissionNo}</td>
+<td class="border p-2">${r.learnerName || ''}</td>
+            <td class="border p-2">${r.class}</td>
+            <td class="border p-2">${r.subject}</td>
+            <td class="border p-2">${r.marks}</td>
+            <td class="border p-2 text-xs">${r.teacherId}</td>
+            <td class="border p-2">
+              <button onclick="generateResultSlip('${r.learnerId}', '${r.examId}')" 
+                class="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700">
+                Slip
+              </button>
+            </td>
+          </tr>`;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('adminResultsTable').innerHTML = html;
+      };
+
+      document.getElementById('exportCsvBtn').onclick = () => {
+        if (lastResultsData.length === 0) {
+          alert("Load results first");
+          return;
+        }
+
+        let csv = "Admission No,Name,Class,Subject,Marks,Teacher ID\n";
+        lastResultsData.forEach(r => {
+          csv += `"${r.admissionNo}","${r.learnerName}","${r.class}","${r.subject}",${r.marks},"${r.teacherId}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `results_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      };
+    }
+
+    function addExamCreation() {
+      const container = document.getElementById('dashboardContent');
+      if (!container.querySelector('#examCreationSection')) {
+        const examDiv = document.createElement('div');
+        examDiv.id = 'examCreationSection';
+        examDiv.className = 'bg-white p-4 rounded-lg shadow mb-4';
+        examDiv.innerHTML = `
+          <h3 class="font-semibold mb-3">Create Exam</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input id="examName" type="text" placeholder="Exam Name e.g CAT 1" class="border p-2 rounded">
+            <input id="examTerm" type="text" placeholder="Term e.g Term 1" class="border p-2 rounded">
+            <input id="examYear" type="number" placeholder="Year" class="border p-2 rounded" value="2026">
+            <button id="createExamBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Exam</button>
+          </div>
+          <p id="examStatus" class="text-sm mt-2"></p>
+        `;
+        container.insertBefore(examDiv, container.children[2]);
+
+        document.getElementById('createExamBtn').onclick = async () => {
+          const name = document.getElementById('examName').value.trim();
+          const term = document.getElementById('examTerm').value.trim();
+          const year = document.getElementById('examYear').value.trim();
+          const status = document.getElementById('examStatus');
+
+          if (!name ||!term ||!year) {
+            status.textContent = "Fill all fields";
+            status.className = "text-sm text-red-600";
+            return;
+          }
+
+          await addDoc(collection(db, "exams"), {
+            examName: name,
+            term,
+            year: parseInt(year),
+            schoolId: userSchoolId,
+            createdAt: serverTimestamp()
+          });
+
+          status.textContent = "Exam created successfully";
+          status.className = "text-sm text-green-600";
+          document.getElementById('examName').value = '';
+          document.getElementById('examTerm').value = '';
+        };
+      }
+    }
+
+    window.generateResultSlip = async function(learnerId, examId) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const learnerDoc = await getDoc(doc(db, "learners", learnerId));
+      if (!learnerDoc.exists()) {
+        alert("Learner not found");
+        return;
+      }
+      const learner = learnerDoc.data();
+
+      const resultsSnap = await getDocs(query(
+        collection(db, "results"),
+        where("learnerId", "==", learnerId),
+        where("examId", "==", examId)
+      ));
+
+      doc.setFontSize(16);
+      doc.text(userSchoolName || "School", 105, 20, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text("RESULT SLIP", 105, 30, { align: 'center' });
+
+      doc.setFontSize(11);
+      doc.text(`Name: ${learner.name}`, 20, 45);
+      doc.text(`Admission No: ${learner.admissionNo}`, 20, 52);
+      doc.text(`Class: ${learner.class}`, 20, 59);
+
+      let y = 70;
+      doc.text("Subject", 20, y);
+      doc.text("Marks", 150, y);
+      y += 7;
+      doc.line(20, y, 190, y);
+      y += 7;
+
+      let total = 0;
+      let count = 0;
+
+      resultsSnap.forEach(d => {
+        const r = d.data();
+        doc.text(r.subject, 20, y);
+        doc.text(r.marks.toString(), 150, y);
+        total += r.marks;
+        count++;
+        y += 7;
+      });
+
+      y += 5;
+      doc.line(20, y, 190, y);
+      y += 7;
+      if (count > 0) {
+        doc.text(`Average: ${(total/count).toFixed(1)}`, 20, y);
+      }
+
+      doc.save(`${learner.name}_ResultSlip.pdf`);
     }
   </script>
 </body>
