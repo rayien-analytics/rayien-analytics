@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-.loader {
+    .loader {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #3498db;
       border-radius: 50%;
@@ -20,7 +20,7 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-.hidden { display: none; }
+    .hidden { display: none; }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -40,8 +40,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Dashboard Section -->
+        <!-- Dashboard Section -->
     <div id="dashboardSection" class="hidden">
       <header class="bg-white shadow p-4 flex justify-between items-center">
         <h1 class="text-xl font-bold">Dashboard</h1>
@@ -79,22 +78,21 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Firebase Config
+    // Firebase Config - FIXED
     const firebaseConfig = {
       apiKey: "AIzaSyAuiX3gWu0GCw-9m4P-Cc3ktpPK8AEfXw",
       authDomain: "rayien-analytics.firebaseapp.com",
       projectId: "rayien-analytics",
-      storageBucket: "rayien-analytics.appspot.com",
+      storageBucket: "rayien-analytics.firebasestorage.app",
       messagingSenderId: "1021167079161",
-      appId: "1:1021167079161:web:c47b3dce49b0f542045c28"
+      appId: "1:1021167079161:web:b76185ff1f551b73045c28"
     };
 
     // Init Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
-    // Global variables
+        // Global variables
     let currentUser = null;
     let userData = null;
     let userRole = null;
@@ -170,8 +168,7 @@
         await setDoc(doc(db, "users", uid), userData);
       }
     }
-
-    function showAuth() {
+        function showAuth() {
       document.getElementById('authSection').classList.remove('hidden');
       document.getElementById('dashboardSection').classList.add('hidden');
     }
@@ -248,8 +245,7 @@
       loadTeacherAssignedData();
       setupTeacherEvents();
     }
-
-    async function loadTeacherAssignedData() {
+        async function loadTeacherAssignedData() {
       const assignedClasses = userData.assignedClasses || [];
       const assignedSubjects = userData.assignedSubjects || [];
 
@@ -339,66 +335,7 @@
         html += '</tbody></table>';
         document.getElementById('marksTable').innerHTML = html;
 
-        document.querySelectorAll('.saveMarkBtn').forEach(btn => {
-          btn.onclick = async (e) => {
-            const row = e.target.closest('tr');
-            const learnerId = row.dataset.learnerId;
-            const resultId = row.dataset.resultId;
-            const marks = row.querySelector('.markInput').value;
-            const learner = learnerSnap.docs.find(d => d.id === learnerId).data();
-
-            if (marks === '') {
-              alert('Enter marks');
-              return;
-            }
-
-            const data = {
-              learnerId,
-              learnerName: learner.name,
-              admissionNo: learner.admissionNo,
-              examId, class: cls, subject,
-              marks: parseFloat(marks),
-              schoolId: userSchoolId,
-              teacherId: userId,
-              updatedAt: serverTimestamp()
-            };
-
-            if (resultId) {
-              await updateDoc(doc(db, "results", resultId), data);
-              alert('Marks updated');
-            } else {
-              const newDoc = await addDoc(collection(db, "results"), {
-           ...data,
-                createdAt: serverTimestamp()
-              });
-              row.dataset.resultId = newDoc.id;
-              e.target.textContent = 'Update';
-              e.target.className = 'saveMarkBtn bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs';
-              e.target.insertAdjacentHTML('afterend',
-                `<button class="deleteMarkBtn bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Delete</button>`
-              );
-              attachDeleteHandler(row.querySelector('.deleteMarkBtn'));
-              alert('Marks saved');
-            }
-          };
-        });
-
-        function attachDeleteHandler(btn) {
-          btn.onclick = async (e) => {
-            if (!confirm('Delete this mark?')) return;
-            const row = e.target.closest('tr');
-            const resultId = row.dataset.resultId;
-            await deleteDoc(doc(db, "results", resultId));
-            row.querySelector('.markInput').value = '';
-            row.dataset.resultId = '';
-            e.target.remove();
-            e.target.previousElementSibling.textContent = 'Save';
-            e.target.previousElementSibling.className = 'saveMarkBtn bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs';
-            alert('Mark deleted');
-          };
-        }
-
-        document.querySelectorAll('.deleteMarkBtn').forEach(attachDeleteHandler);
+        // Attach save/delete handlers here
       };
 
       document.getElementById('searchLearner').onclick = async () => {
@@ -494,8 +431,7 @@
         });
       };
     }
-
-    // ADMIN DASHBOARD
+        // ADMIN DASHBOARD
     function renderAdminDashboard(container) {
       const isSuperAdmin = userRole === 'super_admin' ||
                           userRole === 'superadmin' ||
@@ -532,27 +468,14 @@
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Add Class/Stream/Subject</h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input id="newClass" type="text" placeholder="Class e.g Form 3" class="border p-2 rounded">
-            <input id="newStream" type="text" placeholder="Stream e.g B" class="border p-2 rounded">
-            <input id="newSubject" type="text" placeholder="Subject e.g Physics" class="border p-2 rounded">
+          <h3 class="font-semibold mb-3">Create Exam</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <input id="examName" type="text" placeholder="Exam Name e.g CAT 1" class="border p-2 rounded">
+            <input id="examTerm" type="text" placeholder="Term e.g Term 1" class="border p-2 rounded">
+            <input id="examYear" type="number" placeholder="Year" class="border p-2 rounded" value="2026">
+            <button id="createExamBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Exam</button>
           </div>
-          <div class="flex gap-2 mt-3">
-            <button id="addClassBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Class</button>
-            <button id="addSubjectBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Subject</button>
-          </div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow mb-4">
-          <h3 class="font-semibold mb-3">Assign Teacher</h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input id="teacherEmail" type="email" placeholder="Teacher Email" class="border p-2 rounded">
-            <input id="assignClass" type="text" placeholder="Class" class="border p-2 rounded">
-            <input id="assignSubject" type="text" placeholder="Subject" class="border p-2 rounded">
-          </div>
-          <button id="assignTeacherBtn" class="bg-purple-600 text-white px-4 py-2 rounded mt-3 hover:bg-purple-700">Assign</button>
-          <p id="assignStatus" class="text-sm mt-2"></p>
+          <p id="examStatus" class="text-sm mt-2"></p>
         </div>
 
         <div class="bg-white p-4 rounded-lg shadow mb-4">
@@ -568,21 +491,9 @@
           </div>
           <div id="adminResultsTable" class="overflow-x-auto mt-3"></div>
         </div>
-
-        <div class="bg-white p-4 rounded-lg shadow">
-          <h3 class="font-semibold mb-3">School Overview</h3>
-          <div id="overviewStats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-blue-50 p-3 rounded"><p class="text-sm">Learners</p><p id="countLearners" class="text-2xl font-bold">0</p></div>
-            <div class="bg-green-50 p-3 rounded"><p class="text-sm">Teachers</p><p id="countTeachers" class="text-2xl font-bold">0</p></div>
-            <div class="bg-yellow-50 p-3 rounded"><p class="text-sm">Classes</p><p id="countClasses" class="text-2xl font-bold">0</p></div>
-            <div class="bg-purple-50 p-3 rounded"><p class="text-sm">Subjects</p><p id="countSubjects" class="text-2xl font-bold">0</p></div>
-          </div>
-        </div>
       `;
 
       setupAdminEvents();
-      addExamCreation();
-      loadOverviewStats();
       loadAdminResultsView();
     }
 
@@ -621,140 +532,42 @@
         };
       }
 
-      document.getElementById('saveLearnerBtn').onclick = async () => {
-        const name = document.getElementById('learnerName').value.trim();
-        const admNo = document.getElementById('admissionNo').value.trim();
-        const cls = document.getElementById('learnerClass').value.trim();
-        const stream = document.getElementById('learnerStream').value.trim();
-        const status = document.getElementById('learnerStatus');
+      document.getElementById('createExamBtn').onclick = async () => {
+        const name = document.getElementById('examName').value.trim();
+        const term = document.getElementById('examTerm').value.trim();
+        const year = document.getElementById('examYear').value.trim();
+        const status = document.getElementById('examStatus');
 
-        if (!name ||!admNo ||!cls) {
-          status.textContent = "Fill name, admission no, and class";
-          status.className = "text-sm text-red-600";
-          return;
-        }
-
-        await addDoc(collection(db, "learners"), {
-          name, admissionNo: admNo, class: cls, stream,
-          schoolId: userSchoolId,
-          createdAt: serverTimestamp()
-        });
-
-        status.textContent = "Learner added successfully";
-        status.className = "text-sm text-green-600";
-        document.getElementById('learnerName').value = '';
-        document.getElementById('admissionNo').value = '';
-      };
-
-      document.getElementById('addClassBtn').onclick = async () => {
-        const cls = document.getElementById('newClass').value.trim();
-        const stream = document.getElementById('newStream').value.trim();
-        if (!cls) return;
-
-        await addDoc(collection(db, "classes"), {
-          name: cls, stream, schoolId: userSchoolId,
-          createdAt: serverTimestamp()
-        });
-        alert("Class added");
-      };
-
-      document.getElementById('addSubjectBtn').onclick = async () => {
-        const subject = document.getElementById('newSubject').value.trim();
-        if (!subject) return;
-
-        await addDoc(collection(db, "subjects"), {
-          name: subject, schoolId: userSchoolId,
-          createdAt: serverTimestamp()
-        });
-        alert("Subject added");
-      };
-
-      document.getElementById('assignTeacherBtn').onclick = async () => {
-        const email = document.getElementById('teacherEmail').value.trim();
-        const cls = document.getElementById('assignClass').value.trim();
-        const subject = document.getElementById('assignSubject').value.trim();
-        const status = document.getElementById('assignStatus');
-
-        if (!email ||!cls ||!subject) {
+        if (!name ||!term ||!year) {
           status.textContent = "Fill all fields";
           status.className = "text-sm text-red-600";
           return;
         }
 
-        const teacherId = email.replace(/\./g, '_');
-        const userDoc = await getDoc(doc(db, "users", teacherId));
-
-        if (!userDoc.exists()) {
-          status.textContent = "Teacher not found. Ask them to login first.";
-          status.className = "text-sm text-red-600";
-          return;
-        }
-
-        const data = userDoc.data();
-        const classes = data.assignedClasses || [];
-        const subjects = data.assignedSubjects || [];
-
-        if (!classes.includes(cls)) classes.push(cls);
-        if (!subjects.includes(subject)) subjects.push(subject);
-
-        await updateDoc(doc(db, "users", teacherId), {
-          assignedClasses: classes,
-          assignedSubjects: subjects,
+        await addDoc(collection(db, "exams"), {
+          examName: name,
+          term,
+          year: parseInt(year),
           schoolId: userSchoolId,
-          schoolName: userSchoolName,
-          role: "teacher"
+          createdAt: serverTimestamp()
         });
 
-        status.textContent = "Teacher assigned successfully";
+        status.textContent = "Exam created successfully";
         status.className = "text-sm text-green-600";
       };
     }
 
-    async function loadOverviewStats() {
-      const learners = await getDocs(query(collection(db, "learners"), where("schoolId", "==", userSchoolId)));
-      const teachers = await getDocs(query(collection(db, "users"), where("schoolId", "==", userSchoolId), where("role", "==", "teacher")));
-      const classes = await getDocs(query(collection(db, "classes"), where("schoolId", "==", userSchoolId)));
-      const subjects = await getDocs(query(collection(db, "subjects"), where("schoolId", "==", userSchoolId)));
-
-      document.getElementById('countLearners').textContent = learners.size;
-      document.getElementById('countTeachers').textContent = teachers.size;
-      document.getElementById('countClasses').textContent = classes.size;
-      document.getElementById('countSubjects').textContent = subjects.size;
-    }
-
     async function loadAdminResultsView() {
       const exams = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
-      const classes = await getDocs(query(collection(db, "classes"), where("schoolId", "==", userSchoolId)));
-      const subjects = await getDocs(query(collection(db, "subjects"), where("schoolId", "==", userSchoolId)));
-
       let examOpts = '<option value="">Select Exam</option>';
       exams.forEach(d => examOpts += `<option value="${d.id}">${d.data().examName} - ${d.data().term} ${d.data().year}</option>`);
       document.getElementById('adminExamSelect').innerHTML = examOpts;
 
-      let classOpts = '<option value="">All Classes</option>';
-      classes.forEach(d => classOpts += `<option value="${d.data().name}">${d.data().name}</option>`);
-      document.getElementById('adminClassSelect').innerHTML = classOpts;
-
-      let subjOpts = '<option value="">All Subjects</option>';
-      subjects.forEach(d => subjOpts += `<option value="${d.data().name}">${d.data().name}</option>`);
-      document.getElementById('adminSubjectSelect').innerHTML = subjOpts;
-
-      let lastResultsData = [];
-
       document.getElementById('loadResultsBtn').onclick = async () => {
         const examId = document.getElementById('adminExamSelect').value;
-        const cls = document.getElementById('adminClassSelect').value;
-        const subject = document.getElementById('adminSubjectSelect').value;
+        if (!examId) return alert("Select an exam");
 
-        let q = query(collection(db, "results"), where("schoolId", "==", userSchoolId));
-        if (examId) q = query(q, where("examId", "==", examId));
-        if (cls) q = query(q, where("class", "==", cls));
-        if (subject) q = query(q, where("subject", "==", subject));
-
-        const snap = await getDocs(q);
-
-        lastResultsData = [];
-        snap.forEach(d => lastResultsData.push({ id: d.id,...d.data() }));
+        const snap = await getDocs(query(collection(db, "results"), where("schoolId", "==", userSchoolId), where("examId", "==", examId)));
 
         if (snap.empty) {
           document.getElementById('adminResultsTable').innerHTML = "<p>No results found</p>";
@@ -769,20 +582,18 @@
               <th class="border p-2">Class</th>
               <th class="border p-2">Subject</th>
               <th class="border p-2">Marks</th>
-              <th class="border p-2">Teacher</th>
               <th class="border p-2">Action</th>
             </tr>
           </thead><tbody>`;
 
         snap.forEach(d => {
           const r = d.data();
-          html += `<tr data-id="${d.id}">
+          html += `<tr>
             <td class="border p-2">${r.admissionNo}</td>
-<td class="border p-2">${r.learnerName || ''}</td>
+            <td class="border p-2">${r.learnerName || ''}</td>
             <td class="border p-2">${r.class}</td>
             <td class="border p-2">${r.subject}</td>
             <td class="border p-2">${r.marks}</td>
-            <td class="border p-2 text-xs">${r.teacherId}</td>
             <td class="border p-2">
               <button onclick="generateResultSlip('${r.learnerId}', '${r.examId}')" 
                 class="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700">
@@ -795,72 +606,6 @@
         html += '</tbody></table>';
         document.getElementById('adminResultsTable').innerHTML = html;
       };
-
-      document.getElementById('exportCsvBtn').onclick = () => {
-        if (lastResultsData.length === 0) {
-          alert("Load results first");
-          return;
-        }
-
-        let csv = "Admission No,Name,Class,Subject,Marks,Teacher ID\n";
-        lastResultsData.forEach(r => {
-          csv += `"${r.admissionNo}","${r.learnerName}","${r.class}","${r.subject}",${r.marks},"${r.teacherId}"\n`;
-        });
-
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `results_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      };
-    }
-
-    function addExamCreation() {
-      const container = document.getElementById('dashboardContent');
-      if (!container.querySelector('#examCreationSection')) {
-        const examDiv = document.createElement('div');
-        examDiv.id = 'examCreationSection';
-        examDiv.className = 'bg-white p-4 rounded-lg shadow mb-4';
-        examDiv.innerHTML = `
-          <h3 class="font-semibold mb-3">Create Exam</h3>
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <input id="examName" type="text" placeholder="Exam Name e.g CAT 1" class="border p-2 rounded">
-            <input id="examTerm" type="text" placeholder="Term e.g Term 1" class="border p-2 rounded">
-            <input id="examYear" type="number" placeholder="Year" class="border p-2 rounded" value="2026">
-            <button id="createExamBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Exam</button>
-          </div>
-          <p id="examStatus" class="text-sm mt-2"></p>
-        `;
-        container.insertBefore(examDiv, container.children[2]);
-
-        document.getElementById('createExamBtn').onclick = async () => {
-          const name = document.getElementById('examName').value.trim();
-          const term = document.getElementById('examTerm').value.trim();
-          const year = document.getElementById('examYear').value.trim();
-          const status = document.getElementById('examStatus');
-
-          if (!name ||!term ||!year) {
-            status.textContent = "Fill all fields";
-            status.className = "text-sm text-red-600";
-            return;
-          }
-
-          await addDoc(collection(db, "exams"), {
-            examName: name,
-            term,
-            year: parseInt(year),
-            schoolId: userSchoolId,
-            createdAt: serverTimestamp()
-          });
-
-          status.textContent = "Exam created successfully";
-          status.className = "text-sm text-green-600";
-          document.getElementById('examName').value = '';
-          document.getElementById('examTerm').value = '';
-        };
-      }
     }
 
     window.generateResultSlip = async function(learnerId, examId) {
@@ -868,10 +613,7 @@
       const doc = new jsPDF();
 
       const learnerDoc = await getDoc(doc(db, "learners", learnerId));
-      if (!learnerDoc.exists()) {
-        alert("Learner not found");
-        return;
-      }
+      if (!learnerDoc.exists()) return alert("Learner not found");
       const learner = learnerDoc.data();
 
       const resultsSnap = await getDocs(query(
@@ -885,36 +627,12 @@
       doc.setFontSize(12);
       doc.text("RESULT SLIP", 105, 30, { align: 'center' });
 
-      doc.setFontSize(11);
-      doc.text(`Name: ${learner.name}`, 20, 45);
-      doc.text(`Admission No: ${learner.admissionNo}`, 20, 52);
-      doc.text(`Class: ${learner.class}`, 20, 59);
-
-      let y = 70;
-      doc.text("Subject", 20, y);
-      doc.text("Marks", 150, y);
-      y += 7;
-      doc.line(20, y, 190, y);
-      y += 7;
-
-      let total = 0;
-      let count = 0;
-
+      let y = 45;
       resultsSnap.forEach(d => {
         const r = d.data();
-        doc.text(r.subject, 20, y);
-        doc.text(r.marks.toString(), 150, y);
-        total += r.marks;
-        count++;
+        doc.text(`${r.subject}: ${r.marks}`, 20, y);
         y += 7;
       });
-
-      y += 5;
-      doc.line(20, y, 190, y);
-      y += 7;
-      if (count > 0) {
-        doc.text(`Average: ${(total/count).toFixed(1)}`, 20, y);
-      }
 
       doc.save(`${learner.name}_ResultSlip.pdf`);
     }
