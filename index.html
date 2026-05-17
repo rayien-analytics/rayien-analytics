@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rayien Analytics</title>
+  <title>Rayien Masterlink</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -28,7 +28,7 @@
     <!-- Auth Section -->
     <div id="authSection" class="flex items-center justify-center min-h-screen">
       <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 class="text-2xl font-bold text-center mb-6">Rayien Analytics</h1>
+        <h1 class="text-2xl font-bold text-center mb-6">Rayien Masterlink</h1>
         <div class="space-y-4">
           <input id="email" type="email" placeholder="Email" class="w-full border p-3 rounded">
           <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded">
@@ -78,15 +78,16 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Firebase Config - FIXED
-    const firebaseConfig = {
-      apiKey: "AIzaSyAuiX3gWu0GCw-9m4P-Cc3ktpPK8AEfXw",
-      authDomain: "rayien-analytics.firebaseapp.com",
-      projectId: "rayien-analytics",
-      storageBucket: "rayien-analytics.firebasestorage.app",
-      messagingSenderId: "1021167079161",
-      appId: "1:1021167079161:web:b76185ff1f551b73045c28"
-    };
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAb_8wp3ROSawtBldiM2jUH2NcWkS3Y8Qk",
+  authDomain: "rayien-masterlink-1697c.firebaseapp.com",
+  projectId: "rayien-masterlink-1697c",
+  storageBucket: "rayien-masterlink-1697c.firebasestorage.app",
+  messagingSenderId: "1064074654872",
+  appId: "1:1064074654872:web:74ce7391f99ff579f38ced",
+  measurementId: "G-98XRFL9BZ4"
+};
 
     // Init Firebase
     const app = initializeApp(firebaseConfig);
