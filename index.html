@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    .loader {
+   .loader {
       border: 3px solid #f3f3f3;
       border-top: 3px solid #3498db;
       border-radius: 50%;
@@ -20,7 +20,7 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    .hidden { display: none; }
+   .hidden { display: none; }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -78,7 +78,6 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
     const firebaseConfig = {
       apiKey: "AIzaSyAb_8wp3ROSawtBldiM2jUH2NcWkS3Y8Qk",
       authDomain: "rayien-masterlink-1697c.firebaseapp.com",
@@ -89,11 +88,10 @@
       measurementId: "G-98XRFL9BZ4"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    // Global variables
+
     let currentUser = null;
     let userData = null;
     let userRole = null;
@@ -101,7 +99,6 @@
     let userSchoolName = null;
     let userId = null;
 
-    // Auth state listener
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -116,7 +113,7 @@
       }
     });
 
-    // Auth handlers
+    // UPDATED LOGIN HANDLER
     document.getElementById('loginBtn').onclick = async () => {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
@@ -124,7 +121,7 @@
       const loader = document.getElementById('loginLoader');
       const loginText = document.getElementById('loginText');
 
-      if (!email || !password) {
+      if (!email ||!password) {
         errorEl.textContent = "Please enter email and password";
         return;
       }
@@ -134,8 +131,11 @@
       errorEl.textContent = "";
 
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        console.log("Attempting login for:", email);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        console.log("Login success:", cred.user.email);
       } catch (err) {
+        console.error("Login error:", err.code, err.message);
         alert("Login error: " + err.code + " - " + err.message);
         errorEl.textContent = "Login failed: " + err.message;
       } finally {
@@ -147,6 +147,7 @@
     document.getElementById('logoutBtn').onclick = async () => {
       await signOut(auth);
     };
+
     async function loadUserData(uid) {
       const userDoc = await getDoc(doc(db, "users", uid));
       if (userDoc.exists()) {
@@ -178,10 +179,8 @@
     function showDashboard() {
       document.getElementById('authSection').classList.add('hidden');
       document.getElementById('dashboardSection').classList.remove('hidden');
-
       document.getElementById('userInfo').textContent =
         `${userData.name} | ${userRole || 'teacher'} | ${userSchoolName || 'No School'}`;
-
       renderDashboard();
     }
 
@@ -190,7 +189,6 @@
       const isSuperAdmin = userRole === 'super_admin' ||
                           userRole === 'superadmin' ||
                           currentUser.email === 'onyangowycliffe@gmail.com';
-
       if (isSuperAdmin || userRole === 'admin') {
         renderAdminDashboard(content);
       } else {
@@ -198,7 +196,6 @@
       }
     }
 
-    // TEACHER DASHBOARD
     function renderTeacherDashboard(container) {
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4 flex items-center gap-4">
@@ -243,14 +240,13 @@
           <div id="learnerResult"></div>
         </div>
       `;
-
       loadTeacherAssignedData();
       setupTeacherEvents();
     }
+
     async function loadTeacherAssignedData() {
       const assignedClasses = userData.assignedClasses || [];
       const assignedSubjects = userData.assignedSubjects || [];
-
       const examSnap = await getDocs(query(collection(db, "exams"), where("schoolId", "==", userSchoolId)));
       let examOptions = '<option value="">Select Exam</option>';
       examSnap.forEach(d => {
@@ -275,23 +271,19 @@
         const examId = document.getElementById('examSelect').value;
         const cls = document.getElementById('classSelect').value;
         const subject = document.getElementById('subjectSelect').value;
-
         if (!examId ||!cls ||!subject) {
           alert("Select exam, class, and subject");
           return;
         }
-
         const learnerSnap = await getDocs(query(
           collection(db, "learners"),
           where("schoolId", "==", userSchoolId),
           where("class", "==", cls)
         ));
-
         if (learnerSnap.empty) {
           document.getElementById('marksTable').innerHTML = "<p class='text-gray-500'>No learners found for this class</p>";
           return;
         }
-
         const existingResults = {};
         const resultsSnap = await getDocs(query(
           collection(db, "results"),
@@ -303,7 +295,6 @@
         resultsSnap.forEach(d => {
           existingResults[d.data().learnerId] = { id: d.id, marks: d.data().marks };
         });
-
         let html = `<table class="w-full text-sm border">
           <thead class="bg-gray-200">
             <tr>
@@ -313,14 +304,12 @@
               <th class="border p-2">Action</th>
             </tr>
           </thead><tbody>`;
-
         learnerSnap.forEach(d => {
           const l = d.data();
           const existing = existingResults[d.id];
           const markVal = existing? existing.marks : '';
           const btnText = existing? 'Update' : 'Save';
           const btnColor = existing? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700';
-
           html += `<tr data-learner-id="${d.id}" data-result-id="${existing? existing.id : ''}">
             <td class="border p-2">${l.admissionNo || ''}</td>
             <td class="border p-2">${l.name}</td>
@@ -333,7 +322,6 @@
             </td>
           </tr>`;
         });
-
         html += '</tbody></table>';
         document.getElementById('marksTable').innerHTML = html;
       };
@@ -341,18 +329,15 @@
       document.getElementById('searchLearner').onclick = async () => {
         const admNo = document.getElementById('admissionInput').value.trim();
         if (!admNo) return;
-
         const q = query(collection(db, "learners"),
           where("schoolId", "==", userSchoolId),
           where("admissionNo", "==", admNo)
         );
         const snap = await getDocs(q);
-
         if (snap.empty) {
           document.getElementById('learnerResult').innerHTML = "<p class='text-red-500'>Learner not found</p>";
           return;
         }
-
         const learner = snap.docs[0].data();
         document.getElementById('learnerResult').innerHTML = `
           <div class="border p-3 rounded bg-gray-50">
@@ -367,51 +352,41 @@
       document.getElementById('analyzeBtn').onclick = async () => {
         const examId = document.getElementById('analysisExam').value;
         const cls = document.getElementById('analysisClass').value;
-
         if (!examId ||!cls) {
           alert("Select exam and class");
           return;
         }
-
         const resultsSnap = await getDocs(query(
           collection(db, "results"),
           where("schoolId", "==", userSchoolId),
           where("examId", "==", examId),
           where("class", "==", cls)
         ));
-
         if (resultsSnap.empty) {
           document.getElementById('analysisTable').innerHTML = "<p class='text-gray-500'>No results found</p>";
           return;
         }
-
         const subjectTotals = {};
         const subjectCount = {};
-
         resultsSnap.forEach(d => {
           const r = d.data();
           subjectTotals[r.subject] = (subjectTotals[r.subject] || 0) + r.marks;
           subjectCount[r.subject] = (subjectCount[r.subject] || 0) + 1;
         });
-
         let html = `<table class="w-full text-sm border">
           <thead class="bg-gray-200">
             <tr><th class="border p-2">Subject</th><th class="border p-2">Average</th><th class="border p-2">Students</th></tr>
           </thead><tbody>`;
-
         const labels = [];
         const data = [];
-
         Object.keys(subjectTotals).forEach(sub => {
           const avg = (subjectTotals[sub] / subjectCount[sub]).toFixed(1);
           html += `<tr><td class="border p-2">${sub}</td><td class="border p-2">${avg}</td><td class="border p-2">${subjectCount[sub]}</td></tr>`;
           labels.push(sub);
           data.push(avg);
         });
-
         html += '</tbody></table>';
         document.getElementById('analysisTable').innerHTML = html;
-
         const ctx = document.getElementById('analysisChart');
         if (window.analysisChart) window.analysisChart.destroy();
         window.analysisChart = new Chart(ctx, {
@@ -432,18 +407,15 @@
       };
     }
 
-    // ADMIN DASHBOARD
     function renderAdminDashboard(container) {
       const isSuperAdmin = userRole === 'super_admin' ||
                           userRole === 'superadmin' ||
                           currentUser.email === 'onyangowycliffe@gmail.com';
-
       container.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
           <h2 class="text-lg font-bold mb-2">${userSchoolName || 'Super Admin Panel'}</h2>
           <p class="text-sm text-gray-600">Role: ${isSuperAdmin? 'Super Admin' : 'Admin'}</p>
         </div>
-
         ${isSuperAdmin? `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
           <h3 class="font-semibold mb-3">Add New School</h3>
@@ -455,7 +427,6 @@
           <p id="schoolStatus" class="text-sm mt-2"></p>
         </div>
         ` : ''}
-
         <div class="bg-white p-4 rounded-lg shadow mb-4">
           <h3 class="font-semibold mb-3">Add Learner</h3>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -467,7 +438,6 @@
           <button id="saveLearnerBtn" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">Save Learner</button>
           <p id="learnerStatus" class="text-sm mt-2"></p>
         </div>
-
         <div class="bg-white p-4 rounded-lg shadow mb-4">
           <h3 class="font-semibold mb-3">Create Exam</h3>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -478,7 +448,6 @@
           </div>
           <p id="examStatus" class="text-sm mt-2"></p>
         </div>
-
         <div class="bg-white p-4 rounded-lg shadow mb-4">
           <h3 class="font-semibold mb-3">View Results</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
@@ -493,7 +462,6 @@
           <div id="adminResultsTable" class="overflow-x-auto mt-3"></div>
         </div>
       `;
-
       setupAdminEvents();
       loadAdminResultsView();
     }
@@ -502,49 +470,41 @@
       const isSuperAdmin = userRole === 'super_admin' ||
                           userRole === 'superadmin' ||
                           currentUser.email === 'onyangowycliffe@gmail.com';
-
       if (isSuperAdmin) {
         document.getElementById('addSchoolBtn').onclick = async () => {
           const name = document.getElementById('schoolName').value.trim();
           const email = document.getElementById('schoolEmail').value.trim();
           const status = document.getElementById('schoolStatus');
-
           if (!name ||!email) {
             status.textContent = "Fill all fields";
             status.className = "text-sm text-red-600";
             return;
           }
-
           const schoolId = 'SCH_' + Date.now();
           await setDoc(doc(db, "schools", schoolId), {
             name, email, schoolId,
             createdAt: serverTimestamp(),
             createdBy: currentUser.email
           });
-
           await setDoc(doc(db, "users", email.replace(/\./g, '_')), {
             email, name: name + " Admin", role: "admin",
             schoolId, schoolName: name,
             createdAt: serverTimestamp()
           });
-
           status.textContent = `School ${name} created. Admin: ${email}`;
           status.className = "text-sm text-green-600";
         };
       }
-
       document.getElementById('createExamBtn').onclick = async () => {
         const name = document.getElementById('examName').value.trim();
         const term = document.getElementById('examTerm').value.trim();
         const year = document.getElementById('examYear').value.trim();
         const status = document.getElementById('examStatus');
-
         if (!name ||!term ||!year) {
           status.textContent = "Fill all fields";
           status.className = "text-sm text-red-600";
           return;
         }
-
         await addDoc(collection(db, "exams"), {
           examName: name,
           term,
@@ -552,7 +512,6 @@
           schoolId: userSchoolId,
           createdAt: serverTimestamp()
         });
-
         status.textContent = "Exam created successfully";
         status.className = "text-sm text-green-600";
       };
@@ -563,18 +522,14 @@
       let examOpts = '<option value="">Select Exam</option>';
       exams.forEach(d => examOpts += `<option value="${d.id}">${d.data().examName} - ${d.data().term} ${d.data().year}</option>`);
       document.getElementById('adminExamSelect').innerHTML = examOpts;
-
       document.getElementById('loadResultsBtn').onclick = async () => {
         const examId = document.getElementById('adminExamSelect').value;
         if (!examId) return alert("Select an exam");
-
         const snap = await getDocs(query(collection(db, "results"), where("schoolId", "==", userSchoolId), where("examId", "==", examId)));
-
         if (snap.empty) {
           document.getElementById('adminResultsTable').innerHTML = "<p>No results found</p>";
           return;
         }
-
         let html = `<table class="w-full text-sm border">
           <thead class="bg-gray-200">
             <tr>
@@ -586,7 +541,6 @@
               <th class="border p-2">Action</th>
             </tr>
           </thead><tbody>`;
-
         snap.forEach(d => {
           const r = d.data();
           html += `<tr>
@@ -603,7 +557,6 @@
             </td>
           </tr>`;
         });
-
         html += '</tbody></table>';
         document.getElementById('adminResultsTable').innerHTML = html;
       };
@@ -612,29 +565,24 @@
     window.generateResultSlip = async function(learnerId, examId) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-
       const learnerDoc = await getDoc(doc(db, "learners", learnerId));
       if (!learnerDoc.exists()) return alert("Learner not found");
       const learner = learnerDoc.data();
-
       const resultsSnap = await getDocs(query(
         collection(db, "results"),
         where("learnerId", "==", learnerId),
         where("examId", "==", examId)
       ));
-
       doc.setFontSize(16);
       doc.text(userSchoolName || "School", 105, 20, { align: 'center' });
       doc.setFontSize(12);
       doc.text("RESULT SLIP", 105, 30, { align: 'center' });
-
       let y = 45;
       resultsSnap.forEach(d => {
         const r = d.data();
         doc.text(`${r.subject}: ${r.marks}`, 20, y);
         y += 7;
       });
-
       doc.save(`${learner.name}_ResultSlip.pdf`);
     }
   </script>
